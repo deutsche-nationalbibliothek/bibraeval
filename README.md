@@ -1,5 +1,7 @@
 # BIBRA-Eval
 
+![Status: Work in Progress](https://img.shields.io/badge/status-work--in--progress-orange)
+
 Evaluating descriptive cataloguing records created with BIBRA.
 [BIBRA](https://github.com/NatLibFi/BIBRA) is an (L)LM-based
 assistance tool, to generate bibliographic metadata from a given PDF-Input.
