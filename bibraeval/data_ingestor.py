@@ -21,7 +21,7 @@ class Record(BaseModel, Generic[MetadataT]):
         doc_id: str,
         payload: dict[str, Any],
         schema: type[MetadataT],
-    ) -> "Record[MetadataT]":
+    ) -> Record[MetadataT]:
         validated_metadata = schema.model_validate(payload)
         return cls(doc_id=doc_id, metadata=validated_metadata)
 
@@ -36,14 +36,14 @@ class RecordCollection(BaseModel, Generic[MetadataT]):
         cls,
         directory: str | Path,
         schema: type[MetadataT],
-    ) -> "RecordCollection[MetadataT]":
+    ) -> RecordCollection[MetadataT]:
         collection = cls()
         for record_path in sorted(Path(directory).glob("*.json")):
             with record_path.open(encoding="utf-8") as record_file:
                 payload = json.load(record_file)
             if not isinstance(payload, dict):
                 msg = f"Record file {record_path} must contain a JSON object."
-                raise ValueError(msg)
+                raise TypeError(msg)
             collection.add_payload(
                 doc_id=record_path.stem,
                 payload=payload,
@@ -56,7 +56,7 @@ class RecordCollection(BaseModel, Generic[MetadataT]):
         cls,
         file_path: str | Path,
         schema: type[MetadataT],
-    ) -> "RecordCollection[MetadataT]":
+    ) -> RecordCollection[MetadataT]:
         collection = cls()
         with Path(file_path).open(encoding="utf-8") as jsonl_file:
             for line_number, line in enumerate(jsonl_file, start=1):
@@ -64,15 +64,19 @@ class RecordCollection(BaseModel, Generic[MetadataT]):
                     continue
                 payload = json.loads(line)
                 if not isinstance(payload, dict):
-                    msg = f"Line {line_number} in {file_path} must contain a JSON object."
-                    raise ValueError(msg)
+                    msg = (
+                        f"Line {line_number} in {file_path} must contain a JSON object."
+                    )
+                    raise TypeError(msg)
                 doc_id = payload.get("doc_id")
                 if not isinstance(doc_id, str) or not doc_id:
                     msg = f"Line {line_number} in {file_path} must contain a doc_id."
                     raise ValueError(msg)
                 collection.add_payload(
                     doc_id=doc_id,
-                    payload={key: value for key, value in payload.items() if key != "doc_id"},
+                    payload={
+                        key: value for key, value in payload.items() if key != "doc_id"
+                    },
                     schema=schema,
                 )
         return collection

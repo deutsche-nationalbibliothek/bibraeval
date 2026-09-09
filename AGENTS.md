@@ -347,8 +347,8 @@ the field
 Precision:
 ```python
 for f in fields:
-  if pred_data.f:
-    score[f] = metric[f](pred_data[f], gold_data[f])
+    if pred_data.f:
+        score[f] = metric[f](pred_data[f], gold_data[f])
 ```
 
 Here metric[f] provides the appropriate field agreement score defined for
@@ -368,8 +368,8 @@ for the field
 Recall:
 ```python
 for f in fields:
-  if gold_data.f:
-    score[f] = metric[f](gold_data[f], pred_data[f])
+    if gold_data.f:
+        score[f] = metric[f](gold_data[f], pred_data[f])
 ```
 
 **Accuracy**: every inconsistency is scored as 0
@@ -381,7 +381,7 @@ for f in fields:
 
 ```python
 for f in fields:
-  score[f] = metric[f](gold_data[f], pred_data[f])
+    score[f] = metric[f](gold_data[f], pred_data[f])
 ```
 
 **Common field agreement**: only compare entries that exist in both records
@@ -393,8 +393,8 @@ for f in fields:
 
 ```python
 for f in fields:
-  if gold_data.f and pred_data.f:
-    score[f] = metric[f](gold_data[f], pred_data[f])
+    if gold_data.f and pred_data.f:
+        score[f] = metric[f](gold_data[f], pred_data[f])
 ```
 
 ### Metric aggregation

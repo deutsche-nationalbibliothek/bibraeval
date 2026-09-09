@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from bibraeval.dataIngestor import Record, RecordCollection
+from bibraeval.data_ingestor import Record, RecordCollection
 
 
 class PublicationMetadata(BaseModel):
@@ -72,7 +72,7 @@ def test_record_collection_create_from_dir_loads_json_records(tmp_path) -> None:
     )
     record_path2 = tmp_path / "991651952.json"
     record_path2.write_text(
-       '{"language": ["de"], "title": "DAS GESAMTWERK WOLFGANG BORCHERT", "alt_title": null, "creator": ["Wolfgang Borchert"], "year": null, "publisher": ["Rowohlt Taschenbuch Verlag"], "doi": null, "e-isbn": [], "p-isbn": [], "e-issn": null, "p-issn": null, "type_coar": "book"}',
+        '{"language": ["de"], "title": "DAS GESAMTWERK WOLFGANG BORCHERT", "alt_title": null, "creator": ["Wolfgang Borchert"], "year": null, "publisher": ["Rowohlt Taschenbuch Verlag"], "doi": null, "e-isbn": [], "p-isbn": [], "e-issn": null, "p-issn": null, "type_coar": "book"}',
         encoding="utf-8",
     )
 

@@ -89,7 +89,6 @@ For interactive analysis BIBRA-Eval provides a python API to use
 in individually tailored evaluation worksflows:
 
 ```python
-
 import bibraeval as be
 
 GOLD_DIR = ...
@@ -97,7 +96,7 @@ PRED_DIR = ...
 
 eval_schema = ...
 
-comp = be.comparator(gold_dir = GOLD_DIR, pred_dir = PRED_DIR)
+comp = be.comparator(gold_dir=GOLD_DIR, pred_dir=PRED_DIR)
 
 comp.compute_comparison_matrix()
 
@@ -110,5 +109,4 @@ comp.intermed.show()
 comp.compute_metrics()
 
 comp.metrics.show()
-
 ```

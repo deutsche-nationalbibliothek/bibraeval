@@ -3,7 +3,7 @@ import pytest
 from pydantic import BaseModel, ConfigDict, Field
 
 from bibraeval.comparator import Comparator
-from bibraeval.dataIngestor import RecordCollection
+from bibraeval.data_ingestor import RecordCollection
 
 
 class PublicationMetadata(BaseModel):
@@ -146,4 +146,3 @@ def test_comparator_drops_mismatched_doc_ids() -> None:
             "pred_value": "Werke der Freiheit",
         }
     ]
-
