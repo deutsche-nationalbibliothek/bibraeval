@@ -45,7 +45,7 @@ class Comparator:
         - `field_name`
         - `gold_present`
         - `pred_present`
-        - `gold_value` (may be nested for list fields)
+        - `gt_value` (may be nested for list fields)
         - `pred_value` (may be nested for list fields)
         """
         fused_data = []
@@ -59,22 +59,22 @@ class Comparator:
             field_names = sorted(gold_metadata.keys() | pred_metadata.keys())
 
             for field_name in field_names:
-                gold_value = gold_metadata.get(field_name)
+                gt_value = gold_metadata.get(field_name)
                 pred_value = pred_metadata.get(field_name)
                 fused_data.append(
                     {
                         "doc_id": doc_id,
                         "field_name": field_name,
-                        "gold_present": self._is_present(gold_value),
+                        "gold_present": self._is_present(gt_value),
                         "pred_present": self._is_present(pred_value),
-                        "gold_value": gold_value,
+                        "gt_value": gt_value,
                         "pred_value": pred_value,
                     }
                 )
 
         return pl.DataFrame(
             fused_data,
-            schema_overrides={"gold_value": pl.Object, "pred_value": pl.Object},
+            schema_overrides={"gt_value": pl.Object, "pred_value": pl.Object},
         )
 
     @staticmethod

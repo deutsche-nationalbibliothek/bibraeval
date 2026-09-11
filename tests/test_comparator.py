@@ -48,7 +48,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
         "field_name",
         "gold_present",
         "pred_present",
-        "gold_value",
+        "gt_value",
         "pred_value",
     ]
     assert fused_records.to_dicts() == [
@@ -57,7 +57,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
             "field_name": "language",
             "gold_present": True,
             "pred_present": False,
-            "gold_value": ["ger"],
+            "gt_value": ["ger"],
             "pred_value": [],
         },
         {
@@ -65,7 +65,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
             "field_name": "p-isbn",
             "gold_present": False,
             "pred_present": True,
-            "gold_value": [],
+            "gt_value": [],
             "pred_value": ["978-3-86539-327-2"],
         },
         {
@@ -73,7 +73,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
             "field_name": "title",
             "gold_present": True,
             "pred_present": True,
-            "gold_value": "Werke der Freiheit",
+            "gt_value": "Werke der Freiheit",
             "pred_value": "Werke der Freiheit",
         },
         {
@@ -81,7 +81,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
             "field_name": "year",
             "gold_present": True,
             "pred_present": False,
-            "gold_value": "2013",
+            "gt_value": "2013",
             "pred_value": None,
         },
     ]
@@ -142,7 +142,7 @@ def test_comparator_drops_mismatched_doc_ids() -> None:
             "field_name": "title",
             "gold_present": True,
             "pred_present": True,
-            "gold_value": "Werke der Freiheit",
+            "gt_value": "Werke der Freiheit",
             "pred_value": "Werke der Freiheit",
         }
     ]

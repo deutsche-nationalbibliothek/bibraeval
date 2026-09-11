@@ -4,11 +4,11 @@ from bibraeval.field_metrics import exactMatch, levenshteinMatch
 def test_fuzzy_match_reorders_predicted_values_by_similarity() -> None:
     metric = exactMatch()
 
-    gold_values, predicted_values = metric._fuzzy_match(
+    gt_values, predicted_values = metric._fuzzy_match(
         ["Wolfgang Borchert", "Rowohlt"], ["Rowohlt", "Wolfgang Borchert"]
     )
 
-    assert gold_values == ["Wolfgang Borchert", "Rowohlt"]
+    assert gt_values == ["Wolfgang Borchert", "Rowohlt"]
     assert predicted_values == ["Wolfgang Borchert", "Rowohlt"]
 
 
