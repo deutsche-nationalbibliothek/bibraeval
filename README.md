@@ -49,7 +49,7 @@ results:
 * field macro-average: compute average results per field (along all documents),
    then compute average across all fields
 * micro-average: no intermediate aggregation, average all field-to-field results
-   in one  
+   in one
 
 ## Data format
 
@@ -69,9 +69,11 @@ matches.
 BIBRA-Eval provides a client to start evaluation from terminal.
 
 Directory format:
-```
+
+```bash
 bibra-eval --mode field-avg GOLD-STANDRAD-DIR/ PREDICTIONS-DIR/
 ```
+
 Output:
 | field     | precision | rec | acc | cfa |
 |--------------------------------------|
@@ -81,7 +83,7 @@ Output:
 | ----------|
 | TOTAL (field-avg) | ... | ... | ... | ... |
 
-The setting `--mode field-avg` is default. You can also use `micro` and `doc-avg`. 
+The setting `--mode field-avg` is default. You can also use `micro` and `doc-avg`.
 
 ## Python API
 
@@ -99,8 +101,19 @@ eval_schema = ...
 comp = be.comparator(gold_dir=GOLD_DIR, pred_dir=PRED_DIR)
 
 comp.compute_comparison_matrix()
-
 comp.matrix.show()
+```
+
+The comparison matrix has a tabular format:
+
+| doc_id | field_name | gold_present | pred_present | gt_value | pred_value |
+| --- | --- | --- | --- | --- | --- |
+| `103571650X` | `language` | false | false | `[]` | `[]` |
+| `103571650X` | `p-isbn` | false | true | `[]` | `['978-3-86539-327-2']` |
+| `103571650X` | `title` | true | true | `Werke der Freiheit` | `Werke der Freiheit` |
+| `103571650X` | `year` | false | false | `null` | `null` |
+
+```python
 
 comp.compute_intermediate_results()
 

@@ -22,7 +22,7 @@ for automatic checks.
 
 We follow BIBRA's AGENTS.md rule for code, in particular:
 
-Python code style follows Ruff format. Max line length 88 chars. Imports on top 
+Python code style follows Ruff format. Max line length 88 chars. Imports on top
 of file unless there are special reasons (document reason with comment). Modules
 and classes must have docstrings.
 
@@ -143,7 +143,7 @@ Required columns:
 - `field_name`
 - `gold_present`
 - `pred_present`
-- `gold_value`
+- `gt_value`
 - `pred_value`
 - `fa`
 - `weight`
@@ -151,7 +151,6 @@ Required columns:
 Optional columns:
 
 - `doc_strata`: a list of be free column names defined by the user
-
 
 Interpretation:
 
@@ -167,7 +166,7 @@ Example:
   "field_name": "title",
   "gold_present": true,
   "pred_present": true,
-  "gold_value": "Example title",
+  "gt_value": "Example title",
   "pred_value": "Example Title",
   "fa": 0.93,
   "weight": 2.0
@@ -177,9 +176,9 @@ Example:
 The comparison matrix must satisfy the following invariants:
 
 - one row per `(doc_id, field_name)` comparison
-- rows are valid even if one side ("gold_value" or "pred_value") is missing
+- rows are valid even if one side ("gt_value" or "pred_value") is missing
 - missingness is represented explicitly, not by silent coercion to zero
-- if "gold_value" or "pred_value" is missing, "fa" is missing, too
+- if "gt_value" or "pred_value" is missing, "fa" is missing, too
 - the schema is consistent across all metrics
 
 #### Field agreement
@@ -230,7 +229,7 @@ Example:
 
 ```json
 {
-  "gold_value": ["Doe, Jane", "Smith, John"],
+  "gt_value": ["Doe, Jane", "Smith, John"],
   "pred_value": ["Smith, John", "Doe, Jane"]
 }
 ```
@@ -323,12 +322,12 @@ The bibra data-schema defined needs to be checked by data ingestion methods.
 
 ### Field level comparison
 
-A module `comparator` provides methods for realising field level 
+A module `comparator` provides methods for realising field level
 comparison. `fa` measures the **field agreement**: what is the agreement between
 two fields, conditioned on their mutual existence. `fa` is either measured
 `binary`-score, `levenshtein`-distance or an `llm-as-a-judge`-score.
 `fa` should always be between zero and one. `levenshtein`-distance is
-scaled accordingly. 
+scaled accordingly.
 
 Fields can contain lists and their comparison must first match the list entries,
 then compute the `fa` of matching list entry, which is then
@@ -345,6 +344,7 @@ the field
 | gold_n |  0       | NA     |
 
 Precision:
+
 ```python
 for f in fields:
     if pred_data.f:
@@ -366,6 +366,7 @@ for the field
 | gold_n |  NA      | NA     |
 
 Recall:
+
 ```python
 for f in fields:
     if gold_data.f:
@@ -401,17 +402,17 @@ for f in fields:
 
 Metric aggregation is structured in modular three-step approach:
 
-* **record-by-record-comparison** leading to a `comparison_matrix`. Primary
+- **record-by-record-comparison** leading to a `comparison_matrix`. Primary
   identifiers for each observation of the comparison matrix are `doc_id`
   and `fieldname`. A desired intermediate output is a table like this
 
 | doc_id | fieldname | pred y/n | gold y/n   | fa  |
 | ...    | ...       | ...      | ...        | ... |
 
-* **compute intermediate results**: first layer of aggregation (either across
+- **compute intermediate results**: first layer of aggregation (either across
     fields or across records) computes (weighted) averages over one axis
     (`fields` or `documents`) of the comparison matrix
-* aggregate: computes (weighted) averages over the second axis of the comparison
+- aggregate: computes (weighted) averages over the second axis of the comparison
   matrix leading to `final_results`
 
 `comparison_matrix`, `intermediate_results` and `aggregate_results` are classes
@@ -421,12 +422,12 @@ method.
 In determining results, there are different paths or modes for aggregating
 results:
 
-* document macro-average: compute average result per doc first (along all
+- document macro-average: compute average result per doc first (along all
     fields), then compute average across documents
-* field macro-average: compute average results per field (along all documents),
+- field macro-average: compute average results per field (along all documents),
    then compute average across all fields
-* micro-average: no intermediate aggregation, average all field-to-field results
-   in one  
+- micro-average: no intermediate aggregation, average all field-to-field results
+   in one
 
 Each computation step should allow to handle additional `doc_strata` fields,
 metadata fields that define subgroups of records, that should be preserved in
