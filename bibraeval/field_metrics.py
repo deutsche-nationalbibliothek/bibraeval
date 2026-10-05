@@ -35,9 +35,8 @@ class fieldMetric:
         self,
         gt_values: list[str],
         predicted_values: list[str],
-    ) -> tuple[list[str], list[str | None]]:
+    ) -> tuple[list[str | None], list[str | None]]:
         raise NotImplementedError("Subclasses should implement this method.")
-
 
     def _score_list(
         self, gt_values: list[Any], predicted_values: list[Any], list_metric: str = "f1"
@@ -56,9 +55,7 @@ class fieldMetric:
             generalised precision and recall as in Kekäläinen and Kalervo 2002
             (cf. https://doi.org/10.1002/asi.10137)
         """
-        aligned_gold, aligned_predictions = self._match(
-            gt_values, predicted_values
-        )
+        aligned_gold, aligned_predictions = self._match(gt_values, predicted_values)
 
         tp = 0
         fp = 0
@@ -82,7 +79,11 @@ class fieldMetric:
                 delta_rel += self._score_scalar(gt_value, predicted_value)
 
         precision = (tp + delta_rel) / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = (tp + delta_rel) / (tp + fn + delta_rel) if (tp + fn + delta_rel) > 0 else 0.0
+        recall = (
+            (tp + delta_rel) / (tp + fn + delta_rel)
+            if (tp + fn + delta_rel) > 0
+            else 0.0
+        )
         if list_metric == "precision":
             return precision
         elif list_metric == "recall":
@@ -102,64 +103,62 @@ class exact(fieldMetric):
         return 1.0 if gt_value == predicted_value else 0.0
 
     def _match(
-            self,
-            gt_values: list[str],
-            predicted_values: list[str],
-        ) -> tuple[list[str | None], list[str | None]]:
-            """
-            Align predicted string values to gold values.
-            Args:
-                gt_values: List of gold standard string values.
-                predicted_values: List of predicted string values.
-            Returns:
-                A tuple containing the original gt values and the aligned predicted values.
-            Returns the gt values unchanged and a reordered list of predicted
-            values. Each predicted value is used at most once. If no predicted value
-            is available for a gt value, the aligned predicted value is None.
-            Vice versa, predicted values with no match in the gt values will appear
-            at the end, and gt_values get's appended by None for each unmatched predicted value.
+        self,
+        gt_values: list[str],
+        predicted_values: list[str],
+    ) -> tuple[list[str | None], list[str | None]]:
+        """
+        Align predicted string values to gold values.
+        Args:
+            gt_values: List of gold standard string values.
+            predicted_values: List of predicted string values.
+        Returns:
+            A tuple containing the original gt values and the aligned predicted values.
+        Returns the gt values unchanged and a reordered list of predicted
+        values. Each predicted value is used at most once. If no predicted value
+        is available for a gt value, the aligned predicted value is None.
+        Vice versa, predicted values with no match in the gt values will appear
+        at the end, and gt_values get's appended by None for each unmatched predicted value.
 
-            Example:
-                Exact matching does not align a misspelled value, so it is left
-                unmatched and appended after the gold values:
+        Example:
+            Exact matching does not align a misspelled value, so it is left
+            unmatched and appended after the gold values:
 
-                >>> exact()._match(
-                ...     ["Wolfgang Borchert", "Rowohlt"],
-                ...     ["Rowolt", "Wolfgang Borchert"],
-                ... )
-                (["Wolfgang Borchert", "Rowohlt", None],
-                 ["Wolfgang Borchert", None, "Rowolt"])
+            >>> exact()._match(
+            ...     ["Wolfgang Borchert", "Rowohlt"],
+            ...     ["Rowolt", "Wolfgang Borchert"],
+            ... )
+            (["Wolfgang Borchert", "Rowohlt", None],
+             ["Wolfgang Borchert", None, "Rowolt"])
 
-            Example:
-                Fuzzy matching pairs a misspelled value with its closest remaining
-                gold value:
+        Example:
+            Fuzzy matching pairs a misspelled value with its closest remaining
+            gold value:
 
-                >>> levenshtein()._match(
-                ...     ["Wolfgang Borchert", "Rowohlt"],
-                ...     ["Rowolt", "Wolfgang Borchert"],
-                ... )
-                (["Wolfgang Borchert", "Rowohlt"],
-                 ["Wolfgang Borchert", "Rowolt"])
-            """
-            unmatched_predictions = list(predicted_values)
-            aligned_predictions: list[str | None] = []
+            >>> levenshtein()._match(
+            ...     ["Wolfgang Borchert", "Rowohlt"],
+            ...     ["Rowolt", "Wolfgang Borchert"],
+            ... )
+            (["Wolfgang Borchert", "Rowohlt"],
+             ["Wolfgang Borchert", "Rowolt"])
+        """
+        unmatched_predictions = list(predicted_values)
+        aligned_predictions: list[str | None] = []
 
-            for gt_value in gt_values:
-                try:
-                    prediction_index = unmatched_predictions.index(gt_value)
-                except ValueError:
-                    aligned_predictions.append(None)
-                else:
-                    aligned_predictions.append(
-                        unmatched_predictions.pop(prediction_index)
-                    )
+        for gt_value in gt_values:
+            try:
+                prediction_index = unmatched_predictions.index(gt_value)
+            except ValueError:
+                aligned_predictions.append(None)
+            else:
+                aligned_predictions.append(unmatched_predictions.pop(prediction_index))
 
-            aligned_gt_values: list[str | None] = list(gt_values)
-            for unmatched_prediction in unmatched_predictions:
-                aligned_gt_values.append(None)
-                aligned_predictions.append(unmatched_prediction)
+        aligned_gt_values: list[str | None] = list(gt_values)
+        for unmatched_prediction in unmatched_predictions:
+            aligned_gt_values.append(None)
+            aligned_predictions.append(unmatched_prediction)
 
-            return aligned_gt_values, aligned_predictions
+        return aligned_gt_values, aligned_predictions
 
 
 class levenshtein(fieldMetric):

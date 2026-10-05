@@ -10,11 +10,13 @@ class Comparator:
         self,
         gold_standard: RecordCollection[MetadataT],
         predictions: RecordCollection[MetadataT],
+        metricSchema: dict[str, object] | None = None,
         drop_mismatched_doc_ids: bool = False,
     ):
         self.gold_standard = gold_standard
         self.predictions = predictions
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
+        self.metricSchema = metricSchema
 
         if not self.drop_mismatched_doc_ids:
             self._check_doc_id_match()
@@ -65,6 +67,8 @@ class Comparator:
                     {
                         "doc_id": doc_id,
                         "field_name": field_name,
+                        # custom test for presence of value, exclusing empty
+                        # strings and empty lists
                         "gold_present": self._is_present(gt_value),
                         "pred_present": self._is_present(pred_value),
                         "gt_value": gt_value,
@@ -80,3 +84,18 @@ class Comparator:
     @staticmethod
     def _is_present(value: object) -> bool:
         return value is not None and value != "" and value != []
+
+    def compute_cell_agreement(
+        self, fused_df: pl.DataFrame | None = None
+    ) -> pl.DataFrame:
+        """Compute cell-level agreement between gold and predicted values."""
+        if fused_df is None:
+            fused_df = self.fused_records
+
+        return fused_df.with_columns(
+            (
+                pl.col("gold_present")
+                & pl.col("pred_present")
+                & (pl.col("gt_value") == pl.col("pred_value"))
+            ).alias("cell_agreement")
+        )
