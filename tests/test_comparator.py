@@ -3,7 +3,7 @@ import pytest
 from pydantic import BaseModel, ConfigDict, Field
 
 from bibraeval.comparator import Comparator
-from bibraeval.data_ingestor import RecordCollection
+from bibraeval.data_ingester import RecordCollection
 
 
 class PublicationMetadata(BaseModel):

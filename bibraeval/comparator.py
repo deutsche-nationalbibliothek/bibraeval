@@ -1,6 +1,6 @@
 import polars as pl
 
-from bibraeval.data_ingestor import MetadataT, RecordCollection
+from bibraeval.data_ingester import MetadataT, RecordCollection
 
 
 class Comparator:
