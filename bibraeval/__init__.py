@@ -2,13 +2,13 @@
 
 from .comparator import Comparator
 from .data_ingester import Record, RecordCollection
-from .field_metrics import exactMatch, fieldMetric, levenshteinMatch
+from .field_metrics import exact, fieldMetric, levenshtein
 
 __all__ = [
     "Comparator",
     "Record",
     "RecordCollection",
-    "exactMatch",
+    "exact",
     "fieldMetric",
-    "levenshteinMatch",
+    "levenshtein",
 ]
