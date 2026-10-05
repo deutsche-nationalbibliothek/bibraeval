@@ -1,6 +1,7 @@
 import polars as pl
 
 from bibraeval.data_ingester import MetadataT, RecordCollection
+from bibraeval.field_metrics import exact, fieldMetric
 
 
 class Comparator:
@@ -86,16 +87,23 @@ class Comparator:
         return value is not None and value != "" and value != []
 
     def compute_cell_agreement(
-        self, fused_df: pl.DataFrame | None = None
+        self,
+        fused_df: pl.DataFrame | None = None,
+        metric: fieldMetric | None = None,
     ) -> pl.DataFrame:
         """Compute cell-level agreement between gold and predicted values."""
         if fused_df is None:
             fused_df = self.fused_records
 
+        if metric is None:
+            metric = exact()
+
+        scores = [
+            metric.score(gt_value, pred_value)
+            for gt_value, pred_value in fused_df.select(
+                "gt_value", "pred_value"
+            ).iter_rows()
+        ]
         return fused_df.with_columns(
-            (
-                pl.col("gold_present")
-                & pl.col("pred_present")
-                & (pl.col("gt_value") == pl.col("pred_value"))
-            ).alias("cell_agreement")
+            pl.Series("cell_agreement", scores, dtype=pl.Float64)
         )

@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from bibraeval.comparator import Comparator
 from bibraeval.data_ingester import RecordCollection
+from bibraeval.field_metrics import levenshtein
 
 
 class PublicationMetadata(BaseModel):
@@ -85,6 +86,54 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
             "pred_value": None,
         },
     ]
+
+
+def test_compute_cell_agreement_scores_list_values_and_preserves_missing() -> None:
+    gold_standard = RecordCollection[PublicationMetadata]()
+    gold_standard.add_payload(
+        doc_id="103571650X",
+        payload={"language": ["ger", "eng"]},
+        schema=PublicationMetadata,
+    )
+    predictions = RecordCollection[PublicationMetadata]()
+    predictions.add_payload(
+        doc_id="103571650X",
+        payload={"language": ["eng", "ger"]},
+        schema=PublicationMetadata,
+    )
+
+    scores = Comparator(gold_standard, predictions).compute_cell_agreement()
+
+    assert (
+        scores.filter(pl.col("field_name") == "language")["cell_agreement"].item()
+        == 1.0
+    )
+    assert (
+        scores.filter(pl.col("field_name") == "title")["cell_agreement"].item() is None
+    )
+
+
+def test_compute_cell_agreement_uses_supplied_metric() -> None:
+    gold_standard = RecordCollection[PublicationMetadata]()
+    gold_standard.add_payload(
+        doc_id="103571650X",
+        payload={"title": "cat"},
+        schema=PublicationMetadata,
+    )
+    predictions = RecordCollection[PublicationMetadata]()
+    predictions.add_payload(
+        doc_id="103571650X",
+        payload={"title": "cut"},
+        schema=PublicationMetadata,
+    )
+
+    scores = Comparator(gold_standard, predictions).compute_cell_agreement(
+        metric=levenshtein()
+    )
+
+    assert scores.filter(pl.col("field_name") == "title")[
+        "cell_agreement"
+    ].item() == pytest.approx(2 / 3)
 
 
 def test_comparator_raises_for_mismatched_doc_ids() -> None:
