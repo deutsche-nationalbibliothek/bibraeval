@@ -21,7 +21,7 @@ class Comparator:
 
         if not self.drop_mismatched_doc_ids:
             self._check_doc_id_match()
-        self.fused_records = self._fuse_records()
+        self.comparison_matrix = self._fuse_records()
 
     def _check_doc_id_match(self) -> bool:
         """Check if two record collections contain the same doc_ids."""
@@ -88,22 +88,22 @@ class Comparator:
 
     def compute_cell_agreement(
         self,
-        fused_df: pl.DataFrame | None = None,
+        comparison_matrix: pl.DataFrame | None = None,
         metric: fieldMetric | None = None,
     ) -> pl.DataFrame:
         """Compute cell-level agreement between gold and predicted values."""
-        if fused_df is None:
-            fused_df = self.fused_records
+        if comparison_matrix is None:
+            comparison_matrix = self.comparison_matrix
 
         if metric is None:
             metric = exact()
 
         scores = [
             metric.score(gt_value, pred_value)
-            for gt_value, pred_value in fused_df.select(
+            for gt_value, pred_value in comparison_matrix.select(
                 "gt_value", "pred_value"
             ).iter_rows()
         ]
-        return fused_df.with_columns(
+        return comparison_matrix.with_columns(
             pl.Series("cell_agreement", scores, dtype=pl.Float64)
         )
