@@ -49,11 +49,10 @@ class fieldMetric:
             list_metric: The metric to use for scoring the list, "f1", "precision", or "recall".
         Returns:
             A float representing the score of the aligned values according to the
-            specified list_metric. In the case of non-exact matches
-            non-exact matches contribute to the score through as partial matches
-            with the `_score_scalar` method. This adopts the notion of
-            generalised precision and recall as in Kekäläinen and Kalervo 2002
-            (cf. https://doi.org/10.1002/asi.10137)
+            specified list_metric. Non-exact matches contribute to the score
+            as partial matches, calculated with the `_score_scalar` method.
+            This adopts the notion of generalised precision and recall as in
+            Kekäläinen and Kalervo 2002 (cf. https://doi.org/10.1002/asi.10137)
         """
         aligned_gold, aligned_predictions = self._match(gt_values, predicted_values)
 
