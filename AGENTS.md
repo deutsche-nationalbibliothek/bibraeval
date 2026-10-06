@@ -3,11 +3,11 @@
 ## About
 
 BIBRA-Eval is a package designed to compute evaluation metrics between
-metadata records produced by BIBRA and some gold standard records, e.g. stemming
-from manual descriptive cataloguing. It aims to facilitate evaluation of
-automatic cataloguing with BIBRA, enabling a tight feedback loop between
-model optimization and metric results.
-BIBRA-eval is also designed to facilitate drill down analyses of automatic
+metadata records produced by BIBRA and some gold standard records, e.g.
+stemming from manual descriptive cataloguing. It aims to facilitate
+evaluation of automatic cataloguing with BIBRA, enabling a tight feedback
+loop between model optimization and metric results.
+BIBRA-Eval is also designed to facilitate drill down analyses of automatic
 cataloguing results, providing insights into data domains with weak and
 strong system performance.
 
@@ -15,7 +15,7 @@ strong system performance.
 
 BIBRA-Eval is a `python` package. We use `polars` for processing data-frames.
 Code is formatted with `ruff`. Tests are written with `pytest`. Data types are
-defined with `pydantic`. Packaging is done with `uv`. We use github actions
+defined with `piratic`. Packaging is done with `uv`. We use github actions
 for automatic checks.
 
 ### Code Style
@@ -32,22 +32,19 @@ Ruff checks are a mandatory gate before claiming any task complete. Every
 agentic tool invocation must run both:
 
 ```bash
-uv run ruff check --fix — linting (auto-fix where possible)
-uv run ruff format — formatting (auto-format)
+# linting (auto-fix where possible)
+uv run ruff check --fix
+# formatting (auto-format)
+uv run ruff format 
 ```
-
-Run the checks again with `uv run ruff check` and `uv run ruff format --check`
-to verify everything passes. Do not claim a task complete until both pass.
-
-### Testing
-
-Always run Pytest tests after any code changes.
 
 ### Python Tests
 
 Run with verbose output: `uv run pytest -v`
 
 Or run specific test files: `uv run pytest tests/test_<test_file>.py -v`
+
+Always run Pytest tests after any code changes.
 
 ## Architecture
 
@@ -74,7 +71,6 @@ Rules:
 - `doc_id` must be unique within a dataset
 - records are matched by `doc_id`, not by row order
 - records present in only one dataset are discarded from further computation, warnings are written accordingly
-- duplicate `doc_id` values are invalid input
 
 Example:
 
@@ -112,8 +108,8 @@ During data ingestion the following cases are considered equivalent:
 
 #### Evaluation schema
 
-The evaluation schema defines which fields are compared and which metric applies
-to each field. Each field definition should specify:
+The evaluation schema defines which fields are compared and which metric
+applies to each field. Each field definition should specify:
 
 - field name
 - metric type
@@ -266,7 +262,7 @@ Rules:
 - `doc_strata` fields must be preserved in intermediate outputs for stratified
   analysis
 
-#### Validation and failure behavior
+#### Validation and failure behaviour
 
 The ingestion layer should validate inputs before computing results.
 
