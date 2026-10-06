@@ -81,10 +81,13 @@ Directory format:
 bibra-eval --mode field-avg GOLD-STANDRAD-DIR/ PREDICTIONS-DIR/
 ```
 
-Output: \| field \| precision \| rec \| acc \| cfa \| \|————————————–\|
-\| title \| … \| … \| … \| … \| \| creator \| … \| … \| … \| … \| \| …
-\| … \| … \| … \| … \| \| ———-\| \| TOTAL (field-avg) \| … \| … \| … \|
-… \|
+| field             | prec      | rec | f1  |
+| ----------------- | --------- | --- | --- |
+| title             | ...       | ... | ... |
+| creator           | ...       | ... | ... |
+| ...               | ...       | ... | ... |
+| ----------------- |-----------|-----|-----|
+| TOTAL (field-avg) | ...       | ... | ... |
 
 The setting `--mode field-avg` is default. You can also use `micro` and
 `doc-avg`.
@@ -104,8 +107,8 @@ eval_schema = ...
 
 comp = be.comparator(gold_dir=GOLD_DIR, pred_dir=PRED_DIR)
 
-comp.compute_comparison_matrix()
-comp.matrix.show()
+# show a data frame with a field-by-field comparison
+comp.comparison_matrix
 ```
 
 The comparison matrix has a tabular format:
@@ -117,20 +120,31 @@ The comparison matrix has a tabular format:
 | `103571650X` | `title` | true | true | `Werke der Freiheit` | `Werke der Freiheit` |
 | `103571650X` | `year` | false | false | `null` | `null` |
 
-``` python
+### Aggregating Results on different Axis
 
-comp.compute_intermediate_results()
+```python
+# compute cell wise agreement on comparison matrix
+res_per_doc_and_field = comp.compute_cell_agreement()
 
-comp.intermed.show()
+# compute document average results (per field)
+res_per_field = comp.compute_intermediate_results(axis="doc_id")
 
+# compute document average results (per doc_id)
+res_per_doc = comp.compute_intermediate_results(axis="field")
+
+# overall doc-average
+comp.summarise(res_per_doc)
+
+# overall field-average
+comp.summarise(res_per_field)
+
+# A wrapper for all the above (similar to the client command bibra-eval)
 comp.compute_metrics()
-
-comp.metrics.show()
 ```
 
 ## Class Diagram
 
-``` mermaid
+```mermaid
 classDiagram
     class MetadataT {
         <<type parameter>>
@@ -160,8 +174,11 @@ classDiagram
         +RecordCollection gold_standard
         +RecordCollection predictions
         +bool drop_mismatched_doc_ids
-        +DataFrame fused_records
-        +compute_cell_agreement(fused_df, metric)
+        +DataFrame comparison_matrix
+        +compute_cell_agreement(comparison_matrix, metric)
+        +compute_intermediate_results(cell_agreement_matrix)
+        +summarise(intermediate_results)
+        +compute_metrics(mode)
     }
 
     class fieldMetric {
