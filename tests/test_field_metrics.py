@@ -86,3 +86,21 @@ def test_levenshtein_match_list_values() -> None:
     print(score)
     assert score > 0.0
     assert score < 1.0
+
+
+def test_exact_any_of_scores_one_if_any_value_matches() -> None:
+    metric = exact(list_comparison="any-of")
+
+    assert metric.score(["Wolfgang Borchert", "Rowohlt"], ["Rowohlt", "x"]) == 1.0
+    assert metric.score(["Wolfgang Borchert"], ["Rowohlt"]) == 0.0
+
+
+def test_levenshtein_any_of_returns_best_pair_score() -> None:
+    metric = levenshtein(threshold=0.8, list_comparison="any-of")
+
+    assert metric.score(["apple", "kiwi"], ["appld", "zzzz"]) == 0.8
+
+
+def test_any_of_with_empty_list_scores_zero() -> None:
+    assert exact(list_comparison="any-of").score([], ["Rowohlt"]) == 0.0
+    assert levenshtein(list_comparison="any-of").score(["Rowohlt"], []) == 0.0
