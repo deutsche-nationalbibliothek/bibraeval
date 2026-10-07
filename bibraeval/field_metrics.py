@@ -37,11 +37,12 @@ class fieldMetric:
 
     def _score_any(self, gt_values: list[Any], predicted_values: list[Any]) -> float:
         """Return the best scalar score over all gold/predicted value pairs."""
+        aligned_gt, aligned_predictions = self._match(gt_values, predicted_values)
+
         return max(
             (
                 self._score_scalar(gt_value, predicted_value)
-                for gt_value in gt_values
-                for predicted_value in predicted_values
+                for gt_value, predicted_value in zip(aligned_gt, aligned_predictions)
             ),
             default=0.0,
         )
@@ -72,14 +73,14 @@ class fieldMetric:
             This adopts the notion of generalised precision and recall as in
             Kekäläinen and Kalervo 2002 (cf. https://doi.org/10.1002/asi.10137)
         """
-        aligned_gold, aligned_predictions = self._match(gt_values, predicted_values)
+        aligned_gt, aligned_predictions = self._match(gt_values, predicted_values)
 
         tp = 0
         fp = 0
         fn = 0
         delta_rel = 0.0
         for gt_value, predicted_value in zip(
-            aligned_gold,
+            aligned_gt,
             aligned_predictions,
             strict=True,
         ):
@@ -262,8 +263,8 @@ class levenshtein(fieldMetric):
             if index not in matched_prediction_indices
         ]
 
-        aligned_gold: list[str | None] = list(gt_values)
-        aligned_gold.extend([None] * len(unmatched_predictions))
+        aligned_gt: list[str | None] = list(gt_values)
+        aligned_gt.extend([None] * len(unmatched_predictions))
         aligned_predictions.extend(unmatched_predictions)
 
-        return aligned_gold, aligned_predictions
+        return aligned_gt, aligned_predictions
