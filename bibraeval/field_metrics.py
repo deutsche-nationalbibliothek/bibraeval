@@ -1,10 +1,12 @@
 """Field-level metrics for record comparison."""
 
 from difflib import SequenceMatcher
-from typing import Any
+from typing import Any, Literal
 
 import Levenshtein
 from scipy.optimize import linear_sum_assignment
+
+ListComparison = Literal["all-of", "any-of"]
 
 
 class fieldMetric:
@@ -12,6 +14,9 @@ class fieldMetric:
     Abstract class for field-level metrics in record comparison.
     This class should be subclassed to implement specific field-level metrics.
     """
+
+    def __init__(self, list_comparison: ListComparison = "all-of") -> None:
+        self.list_comparison = list_comparison
 
     def score(self, gt_value: Any, predicted_value: Any) -> float:
         """
@@ -25,8 +30,21 @@ class fieldMetric:
             A numeric score representing the agreement of both values.
         """
         if isinstance(gt_value, list) and isinstance(predicted_value, list):
+            if self.list_comparison == "any-of":
+                return self._score_any(gt_value, predicted_value)
             return self._score_list(gt_value, predicted_value)
         return self._score_scalar(gt_value, predicted_value)
+
+    def _score_any(self, gt_values: list[Any], predicted_values: list[Any]) -> float:
+        """Return the best scalar score over all gold/predicted value pairs."""
+        return max(
+            (
+                self._score_scalar(gt_value, predicted_value)
+                for gt_value in gt_values
+                for predicted_value in predicted_values
+            ),
+            default=0.0,
+        )
 
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:
         raise NotImplementedError("Subclasses should implement this method.")
@@ -163,7 +181,10 @@ class exact(fieldMetric):
 class levenshtein(fieldMetric):
     """Field metric that checks for matches between two values using Levenshtein distance."""
 
-    def __init__(self, threshold: float = 0.8) -> None:
+    def __init__(
+        self, threshold: float = 0.8, list_comparison: ListComparison = "all-of"
+    ) -> None:
+        super().__init__(list_comparison)
         self.threshold = threshold
 
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:

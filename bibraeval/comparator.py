@@ -1,7 +1,10 @@
+from typing import Any
+
 import polars as pl
 
 from bibraeval.data_ingester import MetadataT, RecordCollection
 from bibraeval.field_metrics import exact, fieldMetric
+from bibraeval.metric_schema import field_metric_schema
 
 
 class Comparator:
@@ -11,13 +14,15 @@ class Comparator:
         self,
         ground_truth: RecordCollection[MetadataT],
         predictions: RecordCollection[MetadataT],
-        metricSchema: dict[str, object] | None = None,
+        metric_schema: field_metric_schema | dict[str, Any] | None = None,
         drop_mismatched_doc_ids: bool = False,
     ):
         self.ground_truth = ground_truth
         self.predictions = predictions
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
-        self.metricSchema = metricSchema
+        if isinstance(metric_schema, dict):
+            metric_schema = field_metric_schema.from_dict(metric_schema)
+        self.metric_schema = metric_schema
 
         if not self.drop_mismatched_doc_ids:
             self._check_doc_id_match()
@@ -91,9 +96,19 @@ class Comparator:
         comparison_matrix: pl.DataFrame | None = None,
         metric: fieldMetric | None = None,
     ) -> pl.DataFrame:
-        """Compute cell-level agreement between gold and predicted values."""
+        """Compute cell-level agreement between gold and predicted values.
+
+        With a `metric_schema`, only fields listed in the schema are scored, each
+        with its configured metric and weight. Otherwise all fields are scored
+        with `metric` (default `exact()`) and weight 1.0.
+        """
         if comparison_matrix is None:
             comparison_matrix = self.comparison_matrix
+
+        if self.metric_schema is not None:
+            if metric is not None:
+                raise ValueError("Pass either metric or metric_schema, not both.")
+            return self._compute_schema_agreement(comparison_matrix, self.metric_schema)
 
         if metric is None:
             metric = exact()
@@ -105,5 +120,29 @@ class Comparator:
             ).iter_rows()
         ]
         return comparison_matrix.with_columns(
-            pl.Series("cell_agreement", scores, dtype=pl.Float64)
+            pl.Series("cell_agreement", scores, dtype=pl.Float64),
+            pl.lit(1.0, dtype=pl.Float64).alias("weight"),
+        )
+
+    def _compute_schema_agreement(
+        self, comparison_matrix: pl.DataFrame, schema: field_metric_schema
+    ) -> pl.DataFrame:
+        comparison_matrix = comparison_matrix.filter(
+            pl.col("field_name").is_in(list(schema.fields))
+        )
+        metrics = {name: schema.build_metric(name) for name in schema.fields}
+
+        scores = [
+            metrics[field_name].score(gt_value, pred_value)
+            for field_name, gt_value, pred_value in comparison_matrix.select(
+                "field_name", "gt_value", "pred_value"
+            ).iter_rows()
+        ]
+        weights = [
+            schema.fields[field_name].weight
+            for field_name in comparison_matrix["field_name"]
+        ]
+        return comparison_matrix.with_columns(
+            pl.Series("cell_agreement", scores, dtype=pl.Float64),
+            pl.Series("weight", weights, dtype=pl.Float64),
         )
