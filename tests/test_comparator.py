@@ -19,8 +19,8 @@ class PublicationMetadata(BaseModel):
 
 
 def test_comparator_fuses_record_collections_to_long_table() -> None:
-    gold_standard = RecordCollection[PublicationMetadata]()
-    gold_standard.add_payload(
+    ground_truth = RecordCollection[PublicationMetadata]()
+    ground_truth.add_payload(
         doc_id="103571650X",
         payload={
             "title": "Werke der Freiheit",
@@ -42,12 +42,12 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
         schema=PublicationMetadata,
     )
 
-    comparison_matrix = Comparator(gold_standard, predictions).comparison_matrix
+    comparison_matrix = Comparator(ground_truth, predictions).comparison_matrix
 
     assert comparison_matrix.columns == [
         "doc_id",
         "field_name",
-        "gold_present",
+        "gt_present",
         "pred_present",
         "gt_value",
         "pred_value",
@@ -56,7 +56,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
         {
             "doc_id": "103571650X",
             "field_name": "language",
-            "gold_present": True,
+            "gt_present": True,
             "pred_present": False,
             "gt_value": ["ger"],
             "pred_value": [],
@@ -64,7 +64,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
         {
             "doc_id": "103571650X",
             "field_name": "p-isbn",
-            "gold_present": False,
+            "gt_present": False,
             "pred_present": True,
             "gt_value": [],
             "pred_value": ["978-3-86539-327-2"],
@@ -72,7 +72,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
         {
             "doc_id": "103571650X",
             "field_name": "title",
-            "gold_present": True,
+            "gt_present": True,
             "pred_present": True,
             "gt_value": "Werke der Freiheit",
             "pred_value": "Werke der Freiheit",
@@ -80,7 +80,7 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
         {
             "doc_id": "103571650X",
             "field_name": "year",
-            "gold_present": True,
+            "gt_present": True,
             "pred_present": False,
             "gt_value": "2013",
             "pred_value": None,
@@ -89,8 +89,8 @@ def test_comparator_fuses_record_collections_to_long_table() -> None:
 
 
 def test_compute_cell_agreement_scores_list_values_and_preserves_missing() -> None:
-    gold_standard = RecordCollection[PublicationMetadata]()
-    gold_standard.add_payload(
+    ground_truth = RecordCollection[PublicationMetadata]()
+    ground_truth.add_payload(
         doc_id="103571650X",
         payload={"language": ["ger", "eng"]},
         schema=PublicationMetadata,
@@ -102,7 +102,7 @@ def test_compute_cell_agreement_scores_list_values_and_preserves_missing() -> No
         schema=PublicationMetadata,
     )
 
-    scores = Comparator(gold_standard, predictions).compute_cell_agreement()
+    scores = Comparator(ground_truth, predictions).compute_cell_agreement()
 
     assert (
         scores.filter(pl.col("field_name") == "language")["cell_agreement"].item()
@@ -116,8 +116,8 @@ def test_compute_cell_agreement_scores_list_values_and_preserves_missing() -> No
 
 
 def test_compute_cell_agreement_uses_supplied_metric() -> None:
-    gold_standard = RecordCollection[PublicationMetadata]()
-    gold_standard.add_payload(
+    ground_truth = RecordCollection[PublicationMetadata]()
+    ground_truth.add_payload(
         doc_id="103571650X",
         payload={"title": "cat"},
         schema=PublicationMetadata,
@@ -129,7 +129,7 @@ def test_compute_cell_agreement_uses_supplied_metric() -> None:
         schema=PublicationMetadata,
     )
 
-    scores = Comparator(gold_standard, predictions).compute_cell_agreement(
+    scores = Comparator(ground_truth, predictions).compute_cell_agreement(
         metric=levenshtein()
     )
 
@@ -139,8 +139,8 @@ def test_compute_cell_agreement_uses_supplied_metric() -> None:
 
 
 def test_comparator_raises_for_mismatched_doc_ids() -> None:
-    gold_standard = RecordCollection[PublicationMetadata]()
-    gold_standard.add_payload(
+    ground_truth = RecordCollection[PublicationMetadata]()
+    ground_truth.add_payload(
         doc_id="103571650X",
         payload={"title": "Werke der Freiheit"},
         schema=PublicationMetadata,
@@ -153,17 +153,17 @@ def test_comparator_raises_for_mismatched_doc_ids() -> None:
     )
 
     with pytest.raises(ValueError, match="mismatched doc_ids"):
-        Comparator(gold_standard, predictions)
+        Comparator(ground_truth, predictions)
 
 
 def test_comparator_drops_mismatched_doc_ids() -> None:
-    gold_standard = RecordCollection[PublicationMetadata]()
-    gold_standard.add_payload(
+    ground_truth = RecordCollection[PublicationMetadata]()
+    ground_truth.add_payload(
         doc_id="103571650X",
         payload={"title": "Werke der Freiheit"},
         schema=PublicationMetadata,
     )
-    gold_standard.add_payload(
+    ground_truth.add_payload(
         doc_id="991651952",
         payload={"title": "DAS GESAMTWERK WOLFGANG BORCHERT"},
         schema=PublicationMetadata,
@@ -181,7 +181,7 @@ def test_comparator_drops_mismatched_doc_ids() -> None:
     )
 
     comparison_matrix = Comparator(
-        gold_standard,
+        ground_truth,
         predictions,
         drop_mismatched_doc_ids=True,
     ).comparison_matrix
@@ -191,7 +191,7 @@ def test_comparator_drops_mismatched_doc_ids() -> None:
         {
             "doc_id": "103571650X",
             "field_name": "title",
-            "gold_present": True,
+            "gt_present": True,
             "pred_present": True,
             "gt_value": "Werke der Freiheit",
             "pred_value": "Werke der Freiheit",

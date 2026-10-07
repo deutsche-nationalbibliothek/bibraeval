@@ -137,7 +137,7 @@ Required columns:
 
 - `doc_id`
 - `field_name`
-- `gold_present`
+- `gt_present`
 - `pred_present`
 - `gt_value`
 - `pred_value`
@@ -150,7 +150,7 @@ Optional columns:
 
 Interpretation:
 
-- `gold_present` and `pred_present` indicate whether each side contains a value
+- `gt_present` and `pred_present` indicate whether each side contains a value
 - `fa` is the field agreement score for that record/field pair
 - `weight` is the field-level weight used in subsequent aggregation
 
@@ -160,7 +160,7 @@ Example:
 {
   "doc_id": "1234567890",
   "field_name": "title",
-  "gold_present": true,
+  "gt_present": true,
   "pred_present": true,
   "gt_value": "Example title",
   "pred_value": "Example Title",
@@ -336,15 +336,15 @@ the field
 
 |        | pred_y   | pred_n |
 |--------|----------|--------|
-| gold_y |  fa      | NA     |
-| gold_n |  0       | NA     |
+| gt_y |  fa      | NA     |
+| gt_n |  0       | NA     |
 
 Precision:
 
 ```python
 for f in fields:
     if pred_data.f:
-        score[f] = metric[f](pred_data[f], gold_data[f])
+        score[f] = metric[f](pred_data[f], gt_data[f])
 ```
 
 Here metric[f] provides the appropriate field agreement score defined for
@@ -358,40 +358,40 @@ for the field
 
 |        | pred_y   | pred_n |
 |--------|----------|--------|
-| gold_y |  fa      | 0      |
-| gold_n |  NA      | NA     |
+| gt_y |  fa      | 0      |
+| gt_n |  NA      | NA     |
 
 Recall:
 
 ```python
 for f in fields:
-    if gold_data.f:
-        score[f] = metric[f](gold_data[f], pred_data[f])
+    if gt_data.f:
+        score[f] = metric[f](gt_data[f], pred_data[f])
 ```
 
 **Accuracy**: every inconsistency is scored as 0
 
 |        | pred_y   | pred_n |
 |--------|----------|--------|
-| gold_y |  fa      | 0      |
-| gold_n |  0       | NA     |
+| gt_y |  fa      | 0      |
+| gt_n |  0       | NA     |
 
 ```python
 for f in fields:
-    score[f] = metric[f](gold_data[f], pred_data[f])
+    score[f] = metric[f](gt_data[f], pred_data[f])
 ```
 
 **Common field agreement**: only compare entries that exist in both records
 
 |        | pred_y   | pred_n |
 |--------|----------|--------|
-| gold_y |  fa      | NA     |
-| gold_n |  NA      | NA     |
+| gt_y |  fa      | NA     |
+| gt_n |  NA      | NA     |
 
 ```python
 for f in fields:
-    if gold_data.f and pred_data.f:
-        score[f] = metric[f](gold_data[f], pred_data[f])
+    if gt_data.f and pred_data.f:
+        score[f] = metric[f](gt_data[f], pred_data[f])
 ```
 
 ### Metric aggregation

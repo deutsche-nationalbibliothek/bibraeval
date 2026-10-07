@@ -191,48 +191,48 @@ class levenshtein(fieldMetric):
         if threshold is None:
             threshold = self.threshold
 
-        gold_count = len(gt_values)
+        gt_count = len(gt_values)
         prediction_count = len(predicted_values)
 
-        if not gold_count or not prediction_count:
+        if not gt_count or not prediction_count:
             return (
                 list(gt_values) + [None] * prediction_count,
-                [None] * gold_count + list(predicted_values),
+                [None] * gt_count + list(predicted_values),
             )
 
         # Dummy columns let each gold value remain unmatched instead of forcing
         # a low-similarity prediction into the assignment.
-        exact_bonus = min(gold_count, prediction_count) + 1
+        exact_bonus = min(gt_count, prediction_count) + 1
         similarities = [
             [
-                SequenceMatcher(None, gold_value, prediction).ratio()
+                SequenceMatcher(None, gt_value, prediction).ratio()
                 for prediction in predicted_values
             ]
-            for gold_value in gt_values
+            for gt_value in gt_values
         ]
         weights = [
             [
-                exact_bonus * (gold_value == predicted_values[prediction_index])
+                exact_bonus * (gt_value == predicted_values[prediction_index])
                 + similarity
                 if similarity >= threshold
                 else -1.0
                 for prediction_index, similarity in enumerate(row)
             ]
-            + [0.0] * gold_count
-            for gold_value, row in zip(gt_values, similarities, strict=True)
+            + [0.0] * gt_count
+            for gt_value, row in zip(gt_values, similarities, strict=True)
         ]
 
         rows, columns = linear_sum_assignment(
             [[-weight for weight in row] for row in weights]
         )
 
-        aligned_predictions: list[str | None] = [None] * gold_count
+        aligned_predictions: list[str | None] = [None] * gt_count
         matched_prediction_indices: set[int] = set()
 
-        for gold_index, prediction_index in zip(rows, columns, strict=True):
+        for gt_index, prediction_index in zip(rows, columns, strict=True):
             if prediction_index >= prediction_count:
                 continue
-            aligned_predictions[gold_index] = predicted_values[prediction_index]
+            aligned_predictions[gt_index] = predicted_values[prediction_index]
             matched_prediction_indices.add(prediction_index)
 
         unmatched_predictions = [

@@ -9,12 +9,12 @@ class Comparator:
 
     def __init__(
         self,
-        gold_standard: RecordCollection[MetadataT],
+        ground_truth: RecordCollection[MetadataT],
         predictions: RecordCollection[MetadataT],
         metricSchema: dict[str, object] | None = None,
         drop_mismatched_doc_ids: bool = False,
     ):
-        self.gold_standard = gold_standard
+        self.ground_truth = ground_truth
         self.predictions = predictions
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
         self.metricSchema = metricSchema
@@ -25,18 +25,18 @@ class Comparator:
 
     def _check_doc_id_match(self) -> bool:
         """Check if two record collections contain the same doc_ids."""
-        gold_doc_ids = set(self.gold_standard.records)
+        gt_doc_ids = set(self.ground_truth.records)
         pred_doc_ids = set(self.predictions.records)
-        if gold_doc_ids == pred_doc_ids:
+        if gt_doc_ids == pred_doc_ids:
             return True
 
-        mismatches_gold_not_pred = gold_doc_ids - pred_doc_ids
-        mismatches_pred_not_gold = pred_doc_ids - gold_doc_ids
-        n_mismatches = len(gold_doc_ids ^ pred_doc_ids)
+        mismatches_gt_not_pred = gt_doc_ids - pred_doc_ids
+        mismatches_pred_not_gold = pred_doc_ids - gt_doc_ids
+        n_mismatches = len(gt_doc_ids ^ pred_doc_ids)
         raise ValueError(
             f"Record collections have {n_mismatches} mismatched doc_ids: "
-            f"gold_standard not in predictions: {mismatches_gold_not_pred}, "
-            f"predictions not in gold_standard: {mismatches_pred_not_gold}"
+            f"ground_truth not in predictions: {mismatches_gt_not_pred}, "
+            f"predictions not in ground_truth: {mismatches_pred_not_gold}"
             f"Use drop_mismatched_doc_ids=True to ignore mismatched doc_ids."
         )
 
@@ -46,23 +46,23 @@ class Comparator:
         Columns returned:
         - `doc_id`
         - `field_name`
-        - `gold_present`
+        - `gt_present`
         - `pred_present`
         - `gt_value` (may be nested for list fields)
         - `pred_value` (may be nested for list fields)
         """
         fused_data = []
-        for doc_id in sorted(self.gold_standard.records):
+        for doc_id in sorted(self.ground_truth.records):
             if self.drop_mismatched_doc_ids and doc_id not in self.predictions.records:
                 continue
-            gold_record = self.gold_standard.records[doc_id]
+            gt_record = self.ground_truth.records[doc_id]
             pred_record = self.predictions.records[doc_id]
-            gold_metadata = gold_record.metadata.model_dump(by_alias=True)
+            gt_metadata = gt_record.metadata.model_dump(by_alias=True)
             pred_metadata = pred_record.metadata.model_dump(by_alias=True)
-            field_names = sorted(gold_metadata.keys() | pred_metadata.keys())
+            field_names = sorted(gt_metadata.keys() | pred_metadata.keys())
 
             for field_name in field_names:
-                gt_value = gold_metadata.get(field_name)
+                gt_value = gt_metadata.get(field_name)
                 pred_value = pred_metadata.get(field_name)
                 fused_data.append(
                     {
@@ -70,7 +70,7 @@ class Comparator:
                         "field_name": field_name,
                         # custom test for presence of value, exclusing empty
                         # strings and empty lists
-                        "gold_present": self._is_present(gt_value),
+                        "gt_present": self._is_present(gt_value),
                         "pred_present": self._is_present(pred_value),
                         "gt_value": gt_value,
                         "pred_value": pred_value,

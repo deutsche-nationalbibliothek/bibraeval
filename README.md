@@ -100,12 +100,12 @@ individually tailored evaluation worksflows:
 ``` python
 import bibraeval as be
 
-GOLD_DIR = ...
+GT_DIR = ...
 PRED_DIR = ...
 
 eval_schema = ...
 
-comp = be.comparator(gold_dir=GOLD_DIR, pred_dir=PRED_DIR)
+comp = be.comparator(gt_dir=GT_DIR, pred_dir=PRED_DIR)
 
 # show a data frame with a field-by-field comparison
 comp.comparison_matrix
@@ -113,7 +113,7 @@ comp.comparison_matrix
 
 The comparison matrix has a tabular format:
 
-| doc_id | field_name | gold_present | pred_present | gt_value | pred_value |
+| doc_id | field_name | gt_present | pred_present | gt_value | pred_value |
 |----|----|----|----|----|----|
 | `103571650X` | `language` | false | false | `[]` | `[]` |
 | `103571650X` | `p-isbn` | false | true | `[]` | `['978-3-86539-327-2']` |
@@ -171,7 +171,7 @@ classDiagram
     }
 
     class Comparator {
-        +RecordCollection gold_standard
+        +RecordCollection ground_truth
         +RecordCollection predictions
         +bool drop_mismatched_doc_ids
         +DataFrame comparison_matrix
@@ -203,7 +203,7 @@ classDiagram
     BaseModel <|-- Record~MetadataT~
     BaseModel <|-- RecordCollection~MetadataT~
     Record~MetadataT~ --> MetadataT : metadata
-    Comparator --> RecordCollection~MetadataT~ : gold_standard and predictions
+    Comparator --> RecordCollection~MetadataT~ : ground_truth and predictions
     Comparator --> fieldMetric : metric
     fieldMetric <|-- exact
     fieldMetric <|-- levenshtein
