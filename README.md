@@ -154,6 +154,15 @@ classDiagram
         <<Pydantic>>
     }
 
+    class DataFrame {
+        <<Polars>>
+    }
+
+    class AggregationMode {
+        <<type alias>>
+        doc-avg | field-avg | micro-avg
+    }
+
     class Record~MetadataT~ {
         +str doc_id
         +MetadataT metadata
@@ -174,11 +183,43 @@ classDiagram
         +RecordCollection ground_truth
         +RecordCollection predictions
         +bool drop_mismatched_doc_ids
+        +field_metric_schema metric_schema
         +DataFrame comparison_matrix
         +compute_cell_agreement(comparison_matrix, metric)
-        +compute_intermediate_results(cell_agreement_matrix)
-        +summarise(intermediate_results)
-        +compute_metrics(mode)
+        -_check_doc_id_match()
+        -_fuse_records()
+    }
+
+    class Aggregator {
+        +Comparator comparator
+        +DataFrame cells
+        +IntermediateResults intermediate_results
+        +compute_intermediate_results(group_by) IntermediateResults
+        +summarise_results(intermediate) DataFrame
+        -_compute_cell_scores(cells) DataFrame
+        -_validate_group_by(group_cols)
+    }
+
+    class IntermediateResults {
+        +DataFrame data
+        +tuple group_by
+        +AggregationMode mode
+        +strata list
+        +weighted_summary bool
+    }
+
+    class field_metric_schema {
+        +dict fields
+        +from_dict(data)
+        +from_yaml(path)
+        +build_metric(field_name) fieldMetric
+    }
+
+    class FieldMetricConfig {
+        +metric exact | levenshtein
+        +match_threshold float | None
+        +weight float
+        +list_comparison all-of | any-of
     }
 
     class fieldMetric {
@@ -202,9 +243,20 @@ classDiagram
     RecordCollection~MetadataT~ "1" *-- "0..*" Record~MetadataT~ : records
     BaseModel <|-- Record~MetadataT~
     BaseModel <|-- RecordCollection~MetadataT~
+    BaseModel <|-- field_metric_schema
+    BaseModel <|-- FieldMetricConfig
     Record~MetadataT~ --> MetadataT : metadata
     Comparator --> RecordCollection~MetadataT~ : ground_truth and predictions
-    Comparator --> fieldMetric : metric
+    Comparator --> field_metric_schema : optional configuration
+    Comparator ..> fieldMetric : metric argument
+    Comparator ..> exact : default metric
+    Comparator --> DataFrame : comparison_matrix
+    Aggregator --> Comparator : comparison source
+    Aggregator *-- IntermediateResults : latest result
+    Aggregator --> DataFrame : cells and summaries
+    IntermediateResults --> AggregationMode
+    field_metric_schema "1" *-- "1..*" FieldMetricConfig : fields
+    field_metric_schema ..> fieldMetric : builds configured metric
     fieldMetric <|-- exact
     fieldMetric <|-- levenshtein
 ```
