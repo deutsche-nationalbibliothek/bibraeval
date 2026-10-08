@@ -26,6 +26,10 @@ SCHEMA = {
 
 @pytest.fixture
 def comparator() -> Comparator:
+    """
+    Create and return a Comparator instance with two examples for
+    ground truth and predictions.
+    """
     ground_truth = RecordCollection[PublicationMetadata]()
     ground_truth.add_payload(
         doc_id="A",
