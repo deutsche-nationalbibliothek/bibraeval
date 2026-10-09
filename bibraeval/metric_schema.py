@@ -18,7 +18,7 @@ class FieldMetricConfig(BaseModel):
 
     metric: Literal["exact", "levenshtein"]
     match_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
-    weight: float = Field(default=1.0, ge=0.0)
+    weight: float = Field(default=1.0, gt=0.0)
     list_comparison: ListComparison = "all-of"
 
     @model_validator(mode="after")
