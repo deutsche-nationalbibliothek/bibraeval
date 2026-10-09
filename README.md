@@ -150,14 +150,6 @@ classDiagram
         <<type parameter>>
     }
 
-    class BaseModel {
-        <<Pydantic>>
-    }
-
-    class DataFrame {
-        <<Polars>>
-    }
-
     class AggregationMode {
         <<type alias>>
         doc-avg | field-avg | micro-avg
@@ -247,14 +239,12 @@ classDiagram
     BaseModel <|-- FieldMetricConfig
     Record~MetadataT~ --> MetadataT : metadata
     Comparator --> RecordCollection~MetadataT~ : ground_truth and predictions
-
     Comparator --> FieldMetricMapping : optional configuration
     Comparator ..> FieldMetric : metric argument
-    Comparator ..> Exact : default metric
+    Comparator ..> exact : default metric
     Comparator --> DataFrame : comparison_matrix
     Aggregator --> Comparator : comparison source
     Aggregator *-- IntermediateResults : latest result
-    Aggregator --> DataFrame : cells and summaries
     IntermediateResults --> AggregationMode
     FieldMetricMapping "1" *-- "1..*" FieldMetricConfig : fields
     FieldMetricMapping ..> FieldMetric : builds configured metric
