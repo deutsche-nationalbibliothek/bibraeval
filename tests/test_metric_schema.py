@@ -56,6 +56,7 @@ fields:
     "config",
     [
         {"metric": "binary"},
+        {"metric": "binary", "weight": 0},
         {"metric": "levenshtein"},
         {"metric": "levenshtein", "match_threshold": 1.5},
         {"metric": "exact", "match_threshold": 0.7},

@@ -39,22 +39,20 @@ of the alt_title.
 
 Metrics can be calculated along various levels:
 
-- direct record comparison (record to record results): this forms the
+
+- Level 1: direct record comparison (record to record results): this forms the
   basis for all other computations
-- field average: what is the average agreement across all documents in a
-  test set along one particular field
-- record average: what is the average agreement in a test set across all
-  fields and documents
-
-In determining results, there are different paths or modes for
-aggregating results:
-
-- document macro-average: compute average result per doc first (along
-  all fields), then compute average across documents
-- field macro-average: compute average results per field (along all
+- Level 2: Intermediate Results
+  - results per field: what is the average agreement across all documents in a
+    test set for one particular field
+  - results per document: what is the average agreement across all fields for one
+    particular field
+- Level 3: Summary Metrics
+  - document macro-average: compute average result per doc first (along
+    all fields), then compute average across documents
+  - field macro-average: compute average results per field (along all
   documents), then compute average across all fields
-- micro-average: no intermediate aggregation, average all field-to-field
-  results in one
+  - micro-average: direct pooling of field-to-field results in one score 
 
 ## Data format
 
@@ -150,8 +148,9 @@ classDiagram
         <<type parameter>>
     }
 
-    class BaseModel {
-        <<Pydantic>>
+    class AggregationMode {
+        <<type alias>>
+        doc-avg | field-avg | micro-avg
     }
 
     class Record~MetadataT~ {
@@ -174,11 +173,43 @@ classDiagram
         +RecordCollection ground_truth
         +RecordCollection predictions
         +bool drop_mismatched_doc_ids
+        +field_metric_schema metric_schema
         +DataFrame comparison_matrix
         +compute_cell_agreement(comparison_matrix, metric)
-        +compute_intermediate_results(cell_agreement_matrix)
-        +summarise(intermediate_results)
-        +compute_metrics(mode)
+        -_check_doc_id_match()
+        -_fuse_records()
+    }
+
+    class Aggregator {
+        +Comparator comparator
+        +DataFrame cells
+        +IntermediateResults intermediate_results
+        +compute_intermediate_results(group_by) IntermediateResults
+        +summarise_results(intermediate) DataFrame
+        -_compute_cell_scores(cells) DataFrame
+        -_validate_group_by(group_cols)
+    }
+
+    class IntermediateResults {
+        +DataFrame data
+        +tuple group_by
+        +AggregationMode mode
+        +strata list
+        +weighted_summary bool
+    }
+
+    class field_metric_schema {
+        +dict fields
+        +from_dict(data)
+        +from_yaml(path)
+        +build_metric(field_name) fieldMetric
+    }
+
+    class FieldMetricConfig {
+        +metric exact | levenshtein
+        +match_threshold float | None
+        +weight float
+        +list_comparison all-of | any-of
     }
 
     class fieldMetric {
@@ -200,11 +231,16 @@ classDiagram
     }
 
     RecordCollection~MetadataT~ "1" *-- "0..*" Record~MetadataT~ : records
-    BaseModel <|-- Record~MetadataT~
-    BaseModel <|-- RecordCollection~MetadataT~
     Record~MetadataT~ --> MetadataT : metadata
     Comparator --> RecordCollection~MetadataT~ : ground_truth and predictions
-    Comparator --> fieldMetric : metric
+    Comparator --> field_metric_schema : optional configuration
+    Comparator ..> fieldMetric : metric argument
+    Comparator ..> exact : default metric
+    Aggregator --> Comparator : comparison source
+    Aggregator *-- IntermediateResults : latest result
+    IntermediateResults --> AggregationMode
+    field_metric_schema "1" *-- "1..*" FieldMetricConfig : fields
+    field_metric_schema ..> fieldMetric : builds configured metric
     fieldMetric <|-- exact
     fieldMetric <|-- levenshtein
 ```
