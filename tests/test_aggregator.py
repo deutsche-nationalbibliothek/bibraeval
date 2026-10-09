@@ -88,7 +88,7 @@ def test_doc_avg_uses_weights_within_groups(comparator: Comparator) -> None:
     assert row_a["prec"] == pytest.approx(2 / 3)
     assert row_a["rec"] == pytest.approx(0.5)
     assert row_a["f1"] == pytest.approx(4 / 7)
-    assert (row_a["n_prec"], row_a["n_rec"]) == (2, 3)
+    assert (row_a["support_prec"], row_a["support_rec"]) == (2, 3)
 
     summary = agg.summarise_results()
     assert summary.columns == ["metric", "mode", "value", "support"]
@@ -109,9 +109,9 @@ def test_field_avg_uses_weights_in_summary(comparator: Comparator) -> None:
     assert language["f1"].item() == 0.0
 
     result = _summary_dict(agg.summarise_results())
-    assert result["prec"] == (pytest.approx(1 / 3), 2)
-    assert result["rec"] == (pytest.approx(0.25), 3)
-    assert result["f1"] == (pytest.approx(0.25), 3)
+    assert result["prec"] == (pytest.approx(1 / 3), 4 / 3)
+    assert result["rec"] == (pytest.approx(0.25), 4 / 3)
+    assert result["f1"] == (pytest.approx(0.25), 5 / 3)
 
 
 def test_micro_avg_support_uses_max_presence_counts(comparator: Comparator) -> None:
@@ -140,7 +140,10 @@ def test_micro_avg_support_uses_max_presence_counts(comparator: Comparator) -> N
     assert supports[("Article", "rec")] == 1
 
     overall = agg.compute_intermediate_results(group_by=None)
-    assert (overall.data["n_prec"].item(), overall.data["n_rec"].item()) == (4, 4)
+    assert (
+        overall.data["support_prec"].item(),
+        overall.data["support_rec"].item(),
+    ) == (4, 4)
     assert agg.summarise_results()["support"].to_list() == [4, 4, 4]
 
 
