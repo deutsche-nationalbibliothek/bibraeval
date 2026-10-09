@@ -62,15 +62,21 @@ class Aggregator:
         )
 
     def compute_intermediate_results(
-        self, group_by: str | Sequence[str]
+        self, group_by: str | Sequence[str] | None
     ) -> IntermediateResults:
         """Compute precision, recall and f1 per group.
 
-        `group_by` must contain `doc_id` or `field_name`. When grouping by
-        `field_name`, field weights are carried to the summary step; otherwise
-        they are applied as weighted means within each group.
+        For macro averaging `group_by` must contain exactly one of `doc_id` or
+        `field_name`; other columns may be included as strata.
+        When grouping by `field_name`, field weights are carried to the summary
+        step; otherwise they are applied as weighted means within each group.
         """
-        group_cols = (group_by,) if isinstance(group_by, str) else tuple(group_by)
+        if group_by is None:
+            group_cols = ()
+        elif isinstance(group_by, str):
+            group_cols = (group_by,)
+        else:
+            group_cols = tuple(group_by)
         self._validate_group_by(group_cols)
 
         weighted_summary = "field_name" in group_cols
@@ -84,20 +90,23 @@ class Aggregator:
         if weighted_summary:
             aggs.append(pl.col("weight").first())
 
-        data = (
-            self.cells.group_by(group_cols, maintain_order=True)
-            .agg(aggs)
-            .with_columns(_f1(pl.col("prec"), pl.col("rec")).alias("f1"))
-            .sort(group_cols)
-        )
+        if group_cols:
+            data = self.cells.group_by(group_cols, maintain_order=True).agg(aggs)
+        else:
+            data = self.cells.select(aggs)
+
+        data = data.with_columns(_f1(pl.col("prec"), pl.col("rec")).alias("f1"))
+        if group_cols:
+            data = data.sort(group_cols)
+
         self.intermediate_results = IntermediateResults(
             data=data, group_by=group_cols, mode=_mode(group_cols)
         )
         return self.intermediate_results
 
     def _validate_group_by(self, group_cols: tuple[str, ...]) -> None:
-        if not any(col in group_cols for col in _PRIMARY_KEYS):
-            raise ValueError("group_by must include 'doc_id' or 'field_name'.")
+        if all(col in group_cols for col in _PRIMARY_KEYS):
+            raise ValueError("group_by cannot include both 'doc_id' and 'field_name'.")
         missing = [col for col in group_cols if col not in self.cells.columns]
         if missing:
             raise ValueError(f"group_by columns not found: {missing}")
@@ -108,7 +117,11 @@ class Aggregator:
     def summarise_results(
         self, intermediate: IntermediateResults | None = None
     ) -> pl.DataFrame:
-        """Macro-average intermediate results, preserving stratification columns."""
+        """
+        Macro-average intermediate results, preserving stratification columns.
+        In case of micro averaging, this method will not perform any additional
+          aggregation.
+        """
         if intermediate is None:
             intermediate = self.intermediate_results
         if intermediate is None:
@@ -118,17 +131,30 @@ class Aggregator:
 
         strata = intermediate.strata
         index = strata + (["weight"] if intermediate.weighted_summary else [])
-        long = intermediate.data.select(*index, *METRICS).unpivot(
-            on=list(METRICS), index=index, variable_name="metric"
+        long_index = (
+            [*index, "n_prec", "n_rec"] if intermediate.mode == "micro-avg" else index
+        )
+        long = intermediate.data.select(*long_index, *METRICS).unpivot(
+            on=list(METRICS), index=long_index, variable_name="metric"
         )
         value = (
             _weighted_mean(pl.col("value"), pl.col("weight"))
             if intermediate.weighted_summary
             else pl.col("value").mean()
         )
+        support = (
+            pl.when(pl.col("metric") == "prec")
+            .then(pl.col("n_prec"))
+            .when(pl.col("metric") == "rec")
+            .then(pl.col("n_rec"))
+            .otherwise(pl.max_horizontal("n_prec", "n_rec"))
+            .max()
+            if intermediate.mode == "micro-avg"
+            else pl.col("value").count()
+        )
         return (
             long.group_by([*strata, "metric"])
-            .agg(value.alias("value"), pl.col("value").count().alias("support"))
+            .agg(value.alias("value"), support.alias("support"))
             .with_columns(pl.lit(intermediate.mode).alias("mode"))
             .select(*strata, "metric", "mode", "value", "support")
             .sort([*strata, "metric"])
@@ -156,8 +182,8 @@ def _f1(prec: pl.Expr, rec: pl.Expr) -> pl.Expr:
 
 
 def _mode(group_cols: tuple[str, ...]) -> AggregationMode:
-    if "doc_id" in group_cols and "field_name" in group_cols:
-        return "micro-avg"
     if "doc_id" in group_cols:
         return "doc-avg"
-    return "field-avg"
+    if "field_name" in group_cols:
+        return "field-avg"
+    return "micro-avg"

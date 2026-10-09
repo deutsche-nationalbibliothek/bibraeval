@@ -39,22 +39,20 @@ of the alt_title.
 
 Metrics can be calculated along various levels:
 
-- direct record comparison (record to record results): this forms the
+
+- Level 1: direct record comparison (record to record results): this forms the
   basis for all other computations
-- field average: what is the average agreement across all documents in a
-  test set along one particular field
-- record average: what is the average agreement in a test set across all
-  fields and documents
-
-In determining results, there are different paths or modes for
-aggregating results:
-
-- document macro-average: compute average result per doc first (along
-  all fields), then compute average across documents
-- field macro-average: compute average results per field (along all
+- Level 2: Intermediate Results
+  - results per field: what is the average agreement across all documents in a
+    test set for one particular field
+  - results per document: what is the average agreement across all fields for one
+    particular field
+- Level 3: Summary Metrics
+  - document macro-average: compute average result per doc first (along
+    all fields), then compute average across documents
+  - field macro-average: compute average results per field (along all
   documents), then compute average across all fields
-- micro-average: no intermediate aggregation, average all field-to-field
-  results in one
+  - micro-average: direct pooling of field-to-field results in one score 
 
 ## Data format
 
