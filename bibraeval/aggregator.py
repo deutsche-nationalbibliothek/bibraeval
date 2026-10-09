@@ -82,7 +82,7 @@ class Aggregator:
         weighted_summary = "field_name" in group_cols
         aggs: list[pl.Expr] = []
         for name, score in (("prec", "prec_score"), ("rec", "rec_score")):
-            aggs.append(pl.col(score).count().alias(f"n_{name}"))
+            aggs.append(pl.col(score).count().alias(f"support_{name}"))
             if weighted_summary:
                 aggs.append(pl.col(score).mean().alias(name))
             else:
@@ -132,7 +132,9 @@ class Aggregator:
         strata = intermediate.strata
         index = strata + (["weight"] if intermediate.weighted_summary else [])
         long_index = (
-            [*index, "n_prec", "n_rec"] if intermediate.mode == "micro-avg" else index
+            [*index, "support_prec", "support_rec"]
+            if intermediate.mode in ["micro-avg", "field-avg"]
+            else index
         )
         long = intermediate.data.select(*long_index, *METRICS).unpivot(
             on=list(METRICS), index=long_index, variable_name="metric"
@@ -144,12 +146,12 @@ class Aggregator:
         )
         support = (
             pl.when(pl.col("metric") == "prec")
-            .then(pl.col("n_prec"))
+            .then(pl.col("support_prec"))
             .when(pl.col("metric") == "rec")
-            .then(pl.col("n_rec"))
-            .otherwise(pl.max_horizontal("n_prec", "n_rec"))
-            .max()
-            if intermediate.mode == "micro-avg"
+            .then(pl.col("support_rec"))
+            .otherwise(pl.max_horizontal("support_prec", "support_rec"))
+            .mean()
+            if intermediate.mode in ["micro-avg", "field-avg"]
             else pl.col("value").count()
         )
         return (
