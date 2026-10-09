@@ -114,20 +114,34 @@ def test_field_avg_uses_weights_in_summary(comparator: Comparator) -> None:
     assert result["f1"] == (pytest.approx(0.25), 3)
 
 
-def test_micro_avg_over_cells(comparator: Comparator) -> None:
+def test_micro_avg_support_uses_max_presence_counts(comparator: Comparator) -> None:
+    comparator.comparison_matrix = comparator.comparison_matrix.with_columns(
+        pl.when(pl.col("doc_id") == "A")
+        .then(pl.lit("Book"))
+        .otherwise(pl.lit("Article"))
+        .alias("doc_group")
+    )
     agg = Aggregator(comparator)
-    intermediate = agg.compute_intermediate_results(group_by=["doc_id", "field_name"])
+    intermediate = agg.compute_intermediate_results(group_by=["doc_group"])
 
     assert intermediate.mode == "micro-avg"
-    both_missing = intermediate.data.filter(
-        (pl.col("doc_id") == "B") & (pl.col("field_name") == "language")
-    )
-    assert both_missing["f1"].item() is None
+    summary = agg.summarise_results()
+    supports = {
+        (doc_group, metric): support
+        for doc_group, metric, support in summary.select(
+            "doc_group", "metric", "support"
+        ).iter_rows()
+    }
+    assert supports[("Book", "f1")] == 3
+    assert supports[("Book", "prec")] == 2
+    assert supports[("Book", "rec")] == 3
+    assert supports[("Article", "f1")] == 2
+    assert supports[("Article", "prec")] == 2
+    assert supports[("Article", "rec")] == 1
 
-    result = _summary_dict(agg.summarise_results())
-    assert result["prec"] == (pytest.approx(1 / 3), 4)
-    assert result["rec"] == (pytest.approx(1 / 3), 4)
-    assert result["f1"] == (pytest.approx(2 / 7), 5)
+    overall = agg.compute_intermediate_results(group_by=None)
+    assert (overall.data["n_prec"].item(), overall.data["n_rec"].item()) == (4, 4)
+    assert agg.summarise_results()["support"].to_list() == [4, 4, 4]
 
 
 def test_summary_preserves_strata(comparator: Comparator) -> None:
@@ -152,7 +166,6 @@ def test_summary_preserves_strata(comparator: Comparator) -> None:
 @pytest.mark.parametrize(
     ("group_by", "match"),
     [
-        ("doc_group", "must include"),
         (["doc_id", "missing"], "not found"),
         (["doc_id", "gt_value"], "value columns"),
     ],
