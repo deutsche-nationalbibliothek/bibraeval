@@ -1,17 +1,22 @@
 """Field-level metrics for record comparison."""
 
 from difflib import SequenceMatcher
-from typing import Any
+from typing import Any, Literal
 
-import Levenshtein
+import Levenshtein as lev
 from scipy.optimize import linear_sum_assignment
 
+ListComparison = Literal["all-of", "any-of"]
 
-class fieldMetric:
+
+class FieldMetric:
     """
     Abstract class for field-level metrics in record comparison.
     This class should be subclassed to implement specific field-level metrics.
     """
+
+    def __init__(self, list_comparison: ListComparison = "all-of") -> None:
+        self.list_comparison = list_comparison
 
     def score(self, gt_value: Any, predicted_value: Any) -> float:
         """
@@ -25,8 +30,22 @@ class fieldMetric:
             A numeric score representing the agreement of both values.
         """
         if isinstance(gt_value, list) and isinstance(predicted_value, list):
+            if self.list_comparison == "any-of":
+                return self._score_any(gt_value, predicted_value)
             return self._score_list(gt_value, predicted_value)
         return self._score_scalar(gt_value, predicted_value)
+
+    def _score_any(self, gt_values: list[Any], predicted_values: list[Any]) -> float:
+        """Return the best scalar score over all gold/predicted value pairs."""
+        aligned_gt, aligned_predictions = self._match(gt_values, predicted_values)
+
+        return max(
+            (
+                self._score_scalar(gt_value, predicted_value)
+                for gt_value, predicted_value in zip(aligned_gt, aligned_predictions)
+            ),
+            default=0.0,
+        )
 
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:
         raise NotImplementedError("Subclasses should implement this method.")
@@ -46,7 +65,8 @@ class fieldMetric:
         Args:
             gt_values: List of gold standard values.
             predicted_values: List of predicted values.
-            list_metric: The metric to use for scoring the list, "f1", "precision", or "recall".
+            list_metric: The metric to use for scoring the list, "f1",
+              "precision", or "recall".
         Returns:
             A float representing the score of the aligned values according to the
             specified list_metric. Non-exact matches contribute to the score
@@ -54,14 +74,14 @@ class fieldMetric:
             This adopts the notion of generalised precision and recall as in
             Kekäläinen and Kalervo 2002 (cf. https://doi.org/10.1002/asi.10137)
         """
-        aligned_gold, aligned_predictions = self._match(gt_values, predicted_values)
+        aligned_gt, aligned_predictions = self._match(gt_values, predicted_values)
 
         tp = 0
         fp = 0
         fn = 0
         delta_rel = 0.0
         for gt_value, predicted_value in zip(
-            aligned_gold,
+            aligned_gt,
             aligned_predictions,
             strict=True,
         ):
@@ -95,7 +115,7 @@ class fieldMetric:
             )
 
 
-class exact(fieldMetric):
+class Exact(FieldMetric):
     """Field metric that checks for exact matches between two values."""
 
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:
@@ -112,18 +132,19 @@ class exact(fieldMetric):
             gt_values: List of gold standard string values.
             predicted_values: List of predicted string values.
         Returns:
-            A tuple containing the original gt values and the aligned predicted values.
-        Returns the gt values unchanged and a reordered list of predicted
-        values. Each predicted value is used at most once. If no predicted value
-        is available for a gt value, the aligned predicted value is None.
-        Vice versa, predicted values with no match in the gt values will appear
-        at the end, and gt_values get's appended by None for each unmatched predicted value.
+            A tuple containing the original gt values and the aligned predicted
+            values. Returns the gt values unchanged and a reordered list of
+            predicted values. Each predicted value is used at most once. If no
+            predicted value is available for a gt value, the aligned predicted
+            value is None. Vice versa, predicted values with no match in the gt
+            values will appear at the end, and gt_values get's appended by None
+            for each unmatched predicted value.
 
         Example:
             Exact matching does not align a misspelled value, so it is left
             unmatched and appended after the gold values:
 
-            >>> exact()._match(
+            >>> Exact()._match(
             ...     ["Wolfgang Borchert", "Rowohlt"],
             ...     ["Rowolt", "Wolfgang Borchert"],
             ... )
@@ -134,7 +155,7 @@ class exact(fieldMetric):
             Fuzzy matching pairs a misspelled value with its closest remaining
             gold value:
 
-            >>> levenshtein()._match(
+            >>> Levenshtein()._match(
             ...     ["Wolfgang Borchert", "Rowohlt"],
             ...     ["Rowolt", "Wolfgang Borchert"],
             ... )
@@ -160,16 +181,22 @@ class exact(fieldMetric):
         return aligned_gt_values, aligned_predictions
 
 
-class levenshtein(fieldMetric):
-    """Field metric that checks for matches between two values using Levenshtein distance."""
+class Levenshtein(FieldMetric):
+    """
+    Field metric that checks for matches between two values using Levenshtein
+    distance.
+    """
 
-    def __init__(self, threshold: float = 0.8) -> None:
+    def __init__(
+        self, threshold: float = 0.8, list_comparison: ListComparison = "all-of"
+    ) -> None:
+        super().__init__(list_comparison)
         self.threshold = threshold
 
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:
         if gt_value is None or predicted_value is None:
             return 0.0
-        return Levenshtein.ratio(str(gt_value), str(predicted_value))
+        return lev.ratio(str(gt_value), str(predicted_value))
 
     def _match(
         self,
@@ -241,8 +268,8 @@ class levenshtein(fieldMetric):
             if index not in matched_prediction_indices
         ]
 
-        aligned_gold: list[str | None] = list(gt_values)
-        aligned_gold.extend([None] * len(unmatched_predictions))
+        aligned_gt: list[str | None] = list(gt_values)
+        aligned_gt.extend([None] * len(unmatched_predictions))
         aligned_predictions.extend(unmatched_predictions)
 
-        return aligned_gold, aligned_predictions
+        return aligned_gt, aligned_predictions

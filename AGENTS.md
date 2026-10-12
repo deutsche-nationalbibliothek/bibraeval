@@ -121,7 +121,7 @@ Example:
 
 ```json
 {
-  "title": {"metric": "levenshtein", "weight": 2.0, "required": true},
+  "title": {"metric": "Levenshtein", "weight": 2.0, "required": true},
   "year": {"metric": "binary", "weight": 1.0, "required": false},
   "authors": {"metric": "list_fuzzy", "weight": 1.5, "required": false}
 }
@@ -321,8 +321,8 @@ The bibra data-schema defined needs to be checked by data ingestion methods.
 A module `comparator` provides methods for realising field level
 comparison. `fa` measures the **field agreement**: what is the agreement between
 two fields, conditioned on their mutual existence. `fa` is either measured
-`binary`-score, `levenshtein`-distance or an `llm-as-a-judge`-score.
-`fa` should always be between zero and one. `levenshtein`-distance is
+`binary`-score, `Levenshtein`-distance or an `llm-as-a-judge`-score.
+`fa` should always be between zero and one. `Levenshtein`-distance is
 scaled accordingly.
 
 Fields can contain lists and their comparison must first match the list entries,
