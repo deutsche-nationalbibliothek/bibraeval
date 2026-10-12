@@ -16,16 +16,16 @@ class FieldMetricConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    metric: Literal["Exact", "Levenshtein"]
+    metric: Literal["Exact", "exact", "Levenshtein", "levenshtein"]
     match_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     weight: float = Field(default=1.0, ge=0.0)
     list_comparison: ListComparison = "all-of"
 
     @model_validator(mode="after")
     def _check_match_threshold(self) -> FieldMetricConfig:
-        if self.metric == "Levenshtein" and self.match_threshold is None:
+        if self.metric.lower() == "levenshtein" and self.match_threshold is None:
             raise ValueError("match_threshold is required for metric 'Levenshtein'")
-        if self.metric != "Levenshtein" and self.match_threshold is not None:
+        if self.metric.lower() != "levenshtein" and self.match_threshold is not None:
             raise ValueError(
                 f"match_threshold is not supported for metric '{self.metric}'"
             )
@@ -60,7 +60,7 @@ class FieldMetricMapping(BaseModel):
     def build_metric(self, field_name: str) -> FieldMetric:
         """Instantiate the configured metric for `field_name`."""
         config = self.fields[field_name]
-        if config.metric == "Levenshtein":
+        if config.metric.lower() == "levenshtein":
             if config.match_threshold is None:
                 raise ValueError(f"Field '{field_name}' lacks a match_threshold")
             return Levenshtein(
