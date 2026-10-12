@@ -190,6 +190,17 @@ classDiagram
         -_validate_group_by(group_cols)
     }
 
+    class Evaluator {
+        +Path gt_path
+        +Path pred_path
+        +type schema
+        +AggregationMode mode
+        +field_metric_schema field_metric_config
+        +bool drop_mismatched_doc_ids
+        +compute_metrics() DataFrame
+        -_load(path) RecordCollection
+    }
+
     class IntermediateResults {
         +DataFrame data
         +tuple group_by
@@ -248,6 +259,11 @@ classDiagram
     FieldMetricMapping ..> FieldMetric : builds configured metric
     FieldMetric <|-- Exact
     FieldMetric <|-- Levenshtein
+    Evaluator ..> RecordCollection~MetadataT~ : loads
+    Evaluator ..> Comparator : builds
+    Evaluator ..> Aggregator : builds
+    Evaluator --> FieldMetricMapping : optional configuration
+    Evaluator --> AggregationMode
 ```
 
 ## Example
