@@ -8,7 +8,10 @@ from bibraeval.metric_conf import FieldMetricMapping
 
 
 class Comparator:
-    """Comparator for fusing records from two Record Collections based on their doc_id."""
+    """
+    Comparator for fusing records from two Record Collections based on
+    their doc_id.
+    """
 
     def __init__(
         self,

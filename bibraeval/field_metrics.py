@@ -65,7 +65,8 @@ class FieldMetric:
         Args:
             gt_values: List of gold standard values.
             predicted_values: List of predicted values.
-            list_metric: The metric to use for scoring the list, "f1", "precision", or "recall".
+            list_metric: The metric to use for scoring the list, "f1",
+              "precision", or "recall".
         Returns:
             A float representing the score of the aligned values according to the
             specified list_metric. Non-exact matches contribute to the score
@@ -131,12 +132,13 @@ class Exact(FieldMetric):
             gt_values: List of gold standard string values.
             predicted_values: List of predicted string values.
         Returns:
-            A tuple containing the original gt values and the aligned predicted values.
-        Returns the gt values unchanged and a reordered list of predicted
-        values. Each predicted value is used at most once. If no predicted value
-        is available for a gt value, the aligned predicted value is None.
-        Vice versa, predicted values with no match in the gt values will appear
-        at the end, and gt_values get's appended by None for each unmatched predicted value.
+            A tuple containing the original gt values and the aligned predicted
+            values. Returns the gt values unchanged and a reordered list of
+            predicted values. Each predicted value is used at most once. If no
+            predicted value is available for a gt value, the aligned predicted
+            value is None. Vice versa, predicted values with no match in the gt
+            values will appear at the end, and gt_values get's appended by None
+            for each unmatched predicted value.
 
         Example:
             Exact matching does not align a misspelled value, so it is left
@@ -180,7 +182,10 @@ class Exact(FieldMetric):
 
 
 class Levenshtein(FieldMetric):
-    """Field metric that checks for matches between two values using Levenshtein distance."""
+    """
+    Field metric that checks for matches between two values using Levenshtein
+    distance.
+    """
 
     def __init__(
         self, threshold: float = 0.8, list_comparison: ListComparison = "all-of"

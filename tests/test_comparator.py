@@ -1,10 +1,11 @@
 import polars as pl
 import pytest
+from pydantic import BaseModel, ConfigDict, Field
+
 from bibraeval.comparator import Comparator
 from bibraeval.data_ingester import RecordCollection
 from bibraeval.field_metrics import Levenshtein
 from bibraeval.metric_conf import FieldMetricMapping
-from pydantic import BaseModel, ConfigDict, Field
 
 
 class PublicationMetadata(BaseModel):
@@ -111,7 +112,10 @@ def test_compute_cell_agreement_scores_list_values_and_preserves_missing() -> No
 
     # TODO: Implement handling for missing values in cell agreement scores.
     # assert (
-    #     scores.filter(pl.col("field_name") == "title")["cell_agreement"].item() is None
+    #     scores.filter(pl.col("field_name") == "title")[
+    #         "cell_agreement"
+    #     ].item()
+    #     is None
     # )
 
 

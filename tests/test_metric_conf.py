@@ -1,7 +1,8 @@
 import pytest
+from pydantic import ValidationError
+
 from bibraeval.field_metrics import Exact, Levenshtein
 from bibraeval.metric_conf import FieldMetricMapping
-from pydantic import ValidationError
 
 FIELD_METRICS = {
     "title": {"metric": "Levenshtein", "match_threshold": 0.7, "weight": 2.0},
