@@ -3,13 +3,13 @@
 from difflib import SequenceMatcher
 from typing import Any, Literal
 
-import Levenshtein
+import Levenshtein as lev
 from scipy.optimize import linear_sum_assignment
 
 ListComparison = Literal["all-of", "any-of"]
 
 
-class fieldMetric:
+class FieldMetric:
     """
     Abstract class for field-level metrics in record comparison.
     This class should be subclassed to implement specific field-level metrics.
@@ -114,7 +114,7 @@ class fieldMetric:
             )
 
 
-class exact(fieldMetric):
+class Exact(FieldMetric):
     """Field metric that checks for exact matches between two values."""
 
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:
@@ -142,7 +142,7 @@ class exact(fieldMetric):
             Exact matching does not align a misspelled value, so it is left
             unmatched and appended after the gold values:
 
-            >>> exact()._match(
+            >>> Exact()._match(
             ...     ["Wolfgang Borchert", "Rowohlt"],
             ...     ["Rowolt", "Wolfgang Borchert"],
             ... )
@@ -153,7 +153,7 @@ class exact(fieldMetric):
             Fuzzy matching pairs a misspelled value with its closest remaining
             gold value:
 
-            >>> levenshtein()._match(
+            >>> Levenshtein()._match(
             ...     ["Wolfgang Borchert", "Rowohlt"],
             ...     ["Rowolt", "Wolfgang Borchert"],
             ... )
@@ -179,7 +179,7 @@ class exact(fieldMetric):
         return aligned_gt_values, aligned_predictions
 
 
-class levenshtein(fieldMetric):
+class Levenshtein(FieldMetric):
     """Field metric that checks for matches between two values using Levenshtein distance."""
 
     def __init__(
@@ -191,7 +191,7 @@ class levenshtein(fieldMetric):
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:
         if gt_value is None or predicted_value is None:
             return 0.0
-        return Levenshtein.ratio(str(gt_value), str(predicted_value))
+        return lev.ratio(str(gt_value), str(predicted_value))
 
     def _match(
         self,

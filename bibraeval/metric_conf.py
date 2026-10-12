@@ -8,7 +8,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from bibraeval.field_metrics import ListComparison, exact, fieldMetric, levenshtein
+from bibraeval.field_metrics import Exact, FieldMetric, Levenshtein, ListComparison
 
 
 class FieldMetricConfig(BaseModel):
@@ -16,23 +16,23 @@ class FieldMetricConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    metric: Literal["exact", "levenshtein"]
+    metric: Literal["Exact", "Levenshtein"]
     match_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     weight: float = Field(default=1.0, ge=0.0)
     list_comparison: ListComparison = "all-of"
 
     @model_validator(mode="after")
     def _check_match_threshold(self) -> FieldMetricConfig:
-        if self.metric == "levenshtein" and self.match_threshold is None:
-            raise ValueError("match_threshold is required for metric 'levenshtein'")
-        if self.metric != "levenshtein" and self.match_threshold is not None:
+        if self.metric == "Levenshtein" and self.match_threshold is None:
+            raise ValueError("match_threshold is required for metric 'Levenshtein'")
+        if self.metric != "Levenshtein" and self.match_threshold is not None:
             raise ValueError(
                 f"match_threshold is not supported for metric '{self.metric}'"
             )
         return self
 
 
-class field_metric_schema(BaseModel):
+class FieldMetricMapping(BaseModel):
     """Mapping of field names to their metric configuration."""
 
     model_config = ConfigDict(extra="forbid")
@@ -40,14 +40,14 @@ class field_metric_schema(BaseModel):
     fields: dict[str, FieldMetricConfig]
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> field_metric_schema:
+    def from_dict(cls, data: dict[str, Any]) -> FieldMetricMapping:
         """Build a schema from `{"fields": {...}}` or a flat field mapping."""
         if set(data) == {"fields"}:
             return cls.model_validate(data)
         return cls.model_validate({"fields": data})
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> field_metric_schema:
+    def from_yaml(cls, path: str | Path) -> FieldMetricMapping:
         """Load a schema from a YAML file, e.g. `field-metrics.yaml`."""
         with Path(path).open(encoding="utf-8") as file:
             data = yaml.safe_load(file)
@@ -57,14 +57,14 @@ class field_metric_schema(BaseModel):
             )
         return cls.from_dict(data)
 
-    def build_metric(self, field_name: str) -> fieldMetric:
+    def build_metric(self, field_name: str) -> FieldMetric:
         """Instantiate the configured metric for `field_name`."""
         config = self.fields[field_name]
-        if config.metric == "levenshtein":
+        if config.metric == "Levenshtein":
             if config.match_threshold is None:
                 raise ValueError(f"Field '{field_name}' lacks a match_threshold")
-            return levenshtein(
+            return Levenshtein(
                 threshold=config.match_threshold,
                 list_comparison=config.list_comparison,
             )
-        return exact(list_comparison=config.list_comparison)
+        return Exact(list_comparison=config.list_comparison)

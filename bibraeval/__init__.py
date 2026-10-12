@@ -2,16 +2,16 @@
 
 from .comparator import Comparator
 from .data_ingester import Record, RecordCollection
-from .field_metrics import exact, fieldMetric, levenshtein
-from .metric_schema import FieldMetricConfig, field_metric_schema
+from .field_metrics import Exact, FieldMetric, Levenshtein
+from .metric_conf import FieldMetricConfig, FieldMetricMapping
 
 __all__ = [
     "Comparator",
+    "Exact",
+    "FieldMetric",
     "FieldMetricConfig",
+    "FieldMetricMapping",
+    "Levenshtein",
     "Record",
     "RecordCollection",
-    "exact",
-    "fieldMetric",
-    "field_metric_schema",
-    "levenshtein",
 ]

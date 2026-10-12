@@ -181,20 +181,20 @@ classDiagram
         +compute_metrics(mode)
     }
 
-    class fieldMetric {
+    class FieldMetric {
         +score(gt_value, predicted_value) float
         #_score_scalar(gt_value, predicted_value) float
         #_match(gt_values, predicted_values) tuple
     }
 
-    class exact {
+    class Exact {
         #_score_scalar(gt_value, predicted_value) float
         #_match(gt_values, predicted_values) tuple
     }
 
-    class levenshtein {
+    class Levenshtein {
         +float threshold
-        +levenshtein(threshold)
+        +Levenshtein(threshold)
         #_score_scalar(gt_value, predicted_value) float
         #_match(gt_values, predicted_values, threshold) tuple
     }
@@ -204,9 +204,9 @@ classDiagram
     BaseModel <|-- RecordCollection~MetadataT~
     Record~MetadataT~ --> MetadataT : metadata
     Comparator --> RecordCollection~MetadataT~ : ground_truth and predictions
-    Comparator --> fieldMetric : metric
-    fieldMetric <|-- exact
-    fieldMetric <|-- levenshtein
+    Comparator --> FieldMetric : metric
+    FieldMetric <|-- Exact
+    FieldMetric <|-- Levenshtein
 ```
 
 ## Example
@@ -238,18 +238,18 @@ class PublicationMetadata(BaseModel):
     p_isbn: list[str] = Field(default_factory=list, alias="p-isbn")
 
 
-field_metric_schema = {
-    "title": {"metric": "levenshtein", "match_threshold": 0.7, "weight": 2.0},
-    "year": {"metric": "exact", "weight": 1.0},
+FieldMetricMapping = {
+    "title": {"metric": "Levenshtein", "match_threshold": 0.7, "weight": 2.0},
+    "year": {"metric": "Exact", "weight": 1.0},
     "authors": {
-        "metric": "levenshtein",
+        "metric": "Levenshtein",
         "match_threshold": 0.7,
         "weight": 1.5,
         "list_comparison": "all-of",
     },
-    "p-isbn": {"metric": "exact", "weight": 1.0},
+    "p-isbn": {"metric": "Exact", "weight": 1.0},
     "language": {
-        "metric": "levenshtein",
+        "metric": "Levenshtein",
         "match_threshold": 0.6,
         "weight": 1.0,
         "list_comparison": "all-of",
@@ -305,7 +305,7 @@ predictions.add_payload(
 comp = Comparator(
     ground_truth,
     predictions,
-    metric_schema=field_metric_schema,
+    metric_schema=FieldMetricMapping,
     drop_mismatched_doc_ids=True,
 )
 

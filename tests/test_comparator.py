@@ -1,11 +1,10 @@
 import polars as pl
 import pytest
-from pydantic import BaseModel, ConfigDict, Field
-
 from bibraeval.comparator import Comparator
 from bibraeval.data_ingester import RecordCollection
-from bibraeval.field_metrics import levenshtein
-from bibraeval.metric_schema import field_metric_schema
+from bibraeval.field_metrics import Levenshtein
+from bibraeval.metric_conf import FieldMetricMapping
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PublicationMetadata(BaseModel):
@@ -131,7 +130,7 @@ def test_compute_cell_agreement_uses_supplied_metric() -> None:
     )
 
     scores = Comparator(ground_truth, predictions).compute_cell_agreement(
-        metric=levenshtein()
+        metric=Levenshtein()
     )
 
     assert scores.filter(pl.col("field_name") == "title")[
@@ -201,7 +200,7 @@ def test_comparator_drops_mismatched_doc_ids() -> None:
 
 
 def _schema_comparator(
-    metric_schema: field_metric_schema | dict | None,
+    metric_schema: FieldMetricMapping | dict | None,
 ) -> Comparator:
     ground_truth = RecordCollection[PublicationMetadata]()
     ground_truth.add_payload(
@@ -219,9 +218,9 @@ def _schema_comparator(
 
 
 SCHEMA = {
-    "title": {"metric": "levenshtein", "match_threshold": 0.7, "weight": 2.0},
-    "language": {"metric": "exact", "list_comparison": "any-of", "weight": 1.5},
-    "publisher": {"metric": "exact"},
+    "title": {"metric": "Levenshtein", "match_threshold": 0.7, "weight": 2.0},
+    "language": {"metric": "Exact", "list_comparison": "any-of", "weight": 1.5},
+    "publisher": {"metric": "Exact"},
 }
 
 
@@ -240,7 +239,7 @@ def test_compute_cell_agreement_with_schema_scores_only_listed_fields() -> None:
 def test_compute_cell_agreement_accepts_schema_object_or_dict() -> None:
     from_dict = _schema_comparator(SCHEMA).compute_cell_agreement()
     from_schema = _schema_comparator(
-        field_metric_schema.from_dict(SCHEMA)
+        FieldMetricMapping.from_dict(SCHEMA)
     ).compute_cell_agreement()
 
     assert from_dict.drop("gt_value", "pred_value").equals(
@@ -256,4 +255,4 @@ def test_compute_cell_agreement_without_schema_adds_default_weight() -> None:
 
 def test_compute_cell_agreement_rejects_metric_with_schema() -> None:
     with pytest.raises(ValueError, match="either metric or metric_schema"):
-        _schema_comparator(SCHEMA).compute_cell_agreement(metric=levenshtein())
+        _schema_comparator(SCHEMA).compute_cell_agreement(metric=Levenshtein())

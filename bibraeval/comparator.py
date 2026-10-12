@@ -3,8 +3,8 @@ from typing import Any
 import polars as pl
 
 from bibraeval.data_ingester import MetadataT, RecordCollection
-from bibraeval.field_metrics import exact, fieldMetric
-from bibraeval.metric_schema import field_metric_schema
+from bibraeval.field_metrics import Exact, FieldMetric
+from bibraeval.metric_conf import FieldMetricMapping
 
 
 class Comparator:
@@ -14,14 +14,14 @@ class Comparator:
         self,
         ground_truth: RecordCollection[MetadataT],
         predictions: RecordCollection[MetadataT],
-        metric_schema: field_metric_schema | dict[str, Any] | None = None,
+        metric_schema: FieldMetricMapping | dict[str, Any] | None = None,
         drop_mismatched_doc_ids: bool = False,
     ):
         self.ground_truth = ground_truth
         self.predictions = predictions
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
         if isinstance(metric_schema, dict):
-            metric_schema = field_metric_schema.from_dict(metric_schema)
+            metric_schema = FieldMetricMapping.from_dict(metric_schema)
         self.metric_schema = metric_schema
 
         if not self.drop_mismatched_doc_ids:
@@ -94,13 +94,13 @@ class Comparator:
     def compute_cell_agreement(
         self,
         comparison_matrix: pl.DataFrame | None = None,
-        metric: fieldMetric | None = None,
+        metric: FieldMetric | None = None,
     ) -> pl.DataFrame:
         """Compute cell-level agreement between gold and predicted values.
 
         With a `metric_schema`, only fields listed in the schema are scored, each
         with its configured metric and weight. Otherwise all fields are scored
-        with `metric` (default `exact()`) and weight 1.0.
+        with `metric` (default `Exact()`) and weight 1.0.
         """
         if comparison_matrix is None:
             comparison_matrix = self.comparison_matrix
@@ -111,7 +111,7 @@ class Comparator:
             return self._compute_schema_agreement(comparison_matrix, self.metric_schema)
 
         if metric is None:
-            metric = exact()
+            metric = Exact()
 
         scores = [
             metric.score(gt_value, pred_value)
@@ -125,7 +125,7 @@ class Comparator:
         )
 
     def _compute_schema_agreement(
-        self, comparison_matrix: pl.DataFrame, schema: field_metric_schema
+        self, comparison_matrix: pl.DataFrame, schema: FieldMetricMapping
     ) -> pl.DataFrame:
         comparison_matrix = comparison_matrix.filter(
             pl.col("field_name").is_in(list(schema.fields))
