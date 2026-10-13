@@ -46,7 +46,7 @@ Metrics can be calculated along various levels:
   - results per field: what is the average agreement across all documents in a
     test set for one particular field
   - results per document: what is the average agreement across all fields for one
-    particular field
+    particular document
 - Level 3: Summary Metrics
   - document macro-average: compute average result per doc first (along
     all fields), then compute average across documents
