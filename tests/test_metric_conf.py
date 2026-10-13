@@ -44,6 +44,7 @@ def test_from_yaml_loads_field_metrics(tmp_path, metric_name: str) -> None:
     "config",
     [
         {"metric": "binary"},
+        {"metric": "Exact", "weight": 0},
         {"metric": "Levenshtein"},
         {"metric": "levenshtein"},
         {"metric": "Levenshtein", "match_threshold": 1.5},
