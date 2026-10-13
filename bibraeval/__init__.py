@@ -13,8 +13,8 @@ __all__ = [
     "FieldMetric",
     "FieldMetricConfig",
     "FieldMetricMapping",
-    "Levenshtein",
     "IntermediateResults",
+    "Levenshtein",
     "Record",
     "RecordCollection",
 ]
