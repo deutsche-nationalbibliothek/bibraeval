@@ -10,7 +10,11 @@ MetadataT = TypeVar("MetadataT", bound=BaseModel)
 
 
 class Record(BaseModel, Generic[MetadataT]):
-    """A record with a stable document identifier and validated metadata."""
+    """A record with a stable document identifier and validated metadata.
+
+    ``metadata`` is parsed with the caller-supplied Pydantic model; ``doc_id``
+    is kept separately so records can be matched independently of row order.
+    """
 
     doc_id: str
     metadata: MetadataT
@@ -22,6 +26,13 @@ class Record(BaseModel, Generic[MetadataT]):
         payload: dict[str, Any],
         schema: type[MetadataT],
     ) -> Record[MetadataT]:
+        """Validate a metadata payload and create a record for ``doc_id``.
+
+        Args:
+            doc_id: Stable identifier used to match this record across datasets.
+            payload: Metadata fields accepted by ``schema``.
+            schema: Pydantic model used to validate the metadata.
+        """
         validated_metadata = schema.model_validate(payload)
         return cls(doc_id=doc_id, metadata=validated_metadata)
 
@@ -37,6 +48,12 @@ class RecordCollection(BaseModel, Generic[MetadataT]):
         directory: str | Path,
         schema: type[MetadataT],
     ) -> RecordCollection[MetadataT]:
+        """Load ``*.json`` records from a directory, using each filename stem
+        as its document ID.
+
+        Files must contain JSON objects. Other files and nested directories are
+        ignored.
+        """
         collection = cls()
         for record_path in sorted(Path(directory).glob("*.json")):
             with record_path.open(encoding="utf-8") as record_file:
@@ -57,6 +74,10 @@ class RecordCollection(BaseModel, Generic[MetadataT]):
         file_path: str | Path,
         schema: type[MetadataT],
     ) -> RecordCollection[MetadataT]:
+        """Load JSONL records whose objects each contain a non-empty ``doc_id``.
+
+        Blank lines are ignored. Duplicate IDs replace the earlier record.
+        """
         collection = cls()
         with Path(file_path).open(encoding="utf-8") as jsonl_file:
             for line_number, line in enumerate(jsonl_file, start=1):
@@ -82,9 +103,11 @@ class RecordCollection(BaseModel, Generic[MetadataT]):
         return collection
 
     def add_record(self, record: Record[MetadataT]) -> None:
+        """Store a record, replacing any existing record with the same ID."""
         self.records[record.doc_id] = record
 
     def get_record(self, doc_id: str) -> Record[MetadataT] | None:
+        """Return a record by ID, or ``None`` when the ID is absent."""
         return self.records.get(doc_id)
 
     def add_payload(
@@ -93,9 +116,12 @@ class RecordCollection(BaseModel, Generic[MetadataT]):
         payload: dict[str, Any],
         schema: type[MetadataT],
     ) -> Record[MetadataT]:
+        """Validate payload against metadata schema and store
+        payload, replacing an existing matching ID."""
         record = Record.from_payload(doc_id=doc_id, payload=payload, schema=schema)
         self.add_record(record)
         return record
 
     def as_list(self) -> list[Record[MetadataT]]:
+        """Return the stored records as a list in insertion order."""
         return list(self.records.values())
