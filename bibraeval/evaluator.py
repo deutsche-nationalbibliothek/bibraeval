@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from bibraeval.aggregator import AggregationMode, Aggregator
 from bibraeval.comparator import Comparator
 from bibraeval.data_ingester import RecordCollection
-from bibraeval.metric_schema import field_metric_schema
+from bibraeval.metric_conf import FieldMetricMapping
 
 _GROUP_BY: dict[AggregationMode, str | None] = {
     "doc-avg": "doc_id",
@@ -31,7 +31,7 @@ class Evaluator:
         pred_path: str | Path,
         schema: type[BaseModel],
         mode: AggregationMode = "field-avg",
-        field_metric_config: field_metric_schema
+        field_metric_config: FieldMetricMapping
         | dict[str, Any]
         | str
         | Path
@@ -43,7 +43,7 @@ class Evaluator:
                 f"Invalid mode {mode!r}; expected one of {get_args(AggregationMode)}."
             )
         if isinstance(field_metric_config, (str, Path)):
-            field_metric_config = field_metric_schema.from_yaml(field_metric_config)
+            field_metric_config = FieldMetricMapping.from_yaml(field_metric_config)
 
         self.gt_path = Path(gt_path)
         self.pred_path = Path(pred_path)

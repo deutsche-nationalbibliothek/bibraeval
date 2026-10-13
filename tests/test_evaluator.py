@@ -11,7 +11,7 @@ from bibraeval.aggregator import AggregationMode, Aggregator
 from bibraeval.comparator import Comparator
 from bibraeval.data_ingester import RecordCollection
 from bibraeval.evaluator import Evaluator
-from bibraeval.metric_schema import field_metric_schema
+from bibraeval.metric_conf import FieldMetricMapping
 
 
 class PublicationMetadata(BaseModel):
@@ -126,7 +126,7 @@ def test_config_types_are_equivalent(
     yaml_path = tmp_path / "field-metrics.yaml"
     yaml_path.write_text(yaml.safe_dump(CONFIG))
     config = {
-        "schema": field_metric_schema.from_dict(CONFIG),
+        "schema": FieldMetricMapping.from_dict(CONFIG),
         "yaml_str": str(yaml_path),
         "yaml_path": yaml_path,
     }[config_type]
