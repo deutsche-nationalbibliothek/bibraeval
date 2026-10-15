@@ -8,9 +8,11 @@ from bibraeval.metric_conf import FieldMetricMapping
 
 
 class Comparator:
-    """
-    Comparator for fusing records from two Record Collections based on
-    their doc_id.
+    """Match two record collections and score their metadata fields.
+
+    The comparison matrix contains one row per document and metadata field.
+    Document ID sets must match unless ``drop_mismatched_doc_ids`` is enabled;
+    in that case only IDs present in both collections are compared.
     """
 
     def __init__(
@@ -20,6 +22,16 @@ class Comparator:
         metric_schema: FieldMetricMapping | dict[str, Any] | None = None,
         drop_mismatched_doc_ids: bool = False,
     ):
+        """Create a comparator for validated record collections.
+
+        Args:
+            ground_truth: Reference records keyed by document ID.
+            predictions: Predicted records keyed by document ID.
+            metric_schema: Per-field metric configuration. Unlisted fields are
+                omitted from scoring when a schema is supplied.
+            drop_mismatched_doc_ids: If true, compare only IDs in both
+                collections; otherwise a mismatch raises ``ValueError``.
+        """
         self.ground_truth = ground_truth
         self.predictions = predictions
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
@@ -50,6 +62,10 @@ class Comparator:
 
     def _fuse_records(self) -> pl.DataFrame:
         """Fuse records into one long Polars DataFrame by doc_id and field.
+
+        The ``gt_present`` and ``pred_present`` flags are false for ``None``,
+        empty strings, and empty lists. Other values, including ``0`` and
+        ``False``, count as present.
 
         Columns returned:
         - `doc_id`
@@ -104,6 +120,17 @@ class Comparator:
         With a `metric_schema`, only fields listed in the schema are scored, each
         with its configured metric and weight. Otherwise all fields are scored
         with `metric` (default `Exact()`) and weight 1.0.
+
+        Args:
+            comparison_matrix: Matrix to score; defaults to this comparator's
+                matrix. It must contain ``field_name``, ``gt_value``, and
+                ``pred_value`` columns. Additional columns may be present to
+                facilitate stratified analysis.
+            metric: Metric used when no metric schema was supplied.
+
+        Raises:
+            ValueError: If both ``metric`` and a configured metric schema are
+                supplied.
         """
         if comparison_matrix is None:
             comparison_matrix = self.comparison_matrix

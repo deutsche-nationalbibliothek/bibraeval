@@ -12,7 +12,12 @@ from bibraeval.field_metrics import Exact, FieldMetric, Levenshtein, ListCompari
 
 
 class FieldMetricConfig(BaseModel):
-    """Metric configuration for a single metadata field."""
+    """Metric configuration for one metadata field.
+
+    ``weight`` must be positive. ``match_threshold`` is required for
+    Levenshtein and forbidden for Exact; it applies to fuzzy list alignment,
+    not scalar similarity scores.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -33,7 +38,10 @@ class FieldMetricConfig(BaseModel):
 
 
 class FieldMetricMapping(BaseModel):
-    """Mapping of field names to their metric configuration."""
+    """Mapping from metadata field names to metric configurations.
+
+    When used by a comparator, only listed fields are scored.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -48,7 +56,12 @@ class FieldMetricMapping(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> FieldMetricMapping:
-        """Load a schema from a YAML file, e.g. `field-metrics.yaml`."""
+        """Load a flat field mapping or ``fields`` mapping from a YAML file.
+
+        Raises:
+            TypeError: If the YAML document is not a mapping.
+            pydantic.ValidationError: If a field configuration is invalid.
+        """
         with Path(path).open(encoding="utf-8") as file:
             data = yaml.safe_load(file)
         if not isinstance(data, dict):
