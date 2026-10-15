@@ -13,6 +13,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "sphinxcontrib.mermaid",
 ]
 
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}

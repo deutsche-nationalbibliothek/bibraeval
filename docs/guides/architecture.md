@@ -2,7 +2,7 @@
 
 ## Class Diagram
 
-```mermaid
+```{mermaid}
 classDiagram
     class MetadataT {
         <<type parameter>>

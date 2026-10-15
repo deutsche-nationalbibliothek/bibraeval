@@ -29,6 +29,7 @@ dev = [
 docs = [
     "myst-parser>=4.0,<6",
     "sphinx>=8.2,<10",
+    "sphinxcontrib-mermaid>=2.1.0",
 ]
 
 [tool.bumpversion]
