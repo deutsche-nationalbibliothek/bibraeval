@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   pytest:
-    name : Run tests on Python ${{ matrix.python-version }}
+    name : Run tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -32,11 +32,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --group dev
 
-      - name: Run tests
-        run: uv run pytest
+      - name: Run tests with coverage
+        run: uv run pytest --cov=bibraeval --cov-report=term-missing --cov-report=xml
 
   ruff:
-    name: Lint and check format with Ruff
+    name: Lint and check format (Ruff)
     runs-on: ubuntu-latest
 
     steps:
@@ -56,7 +56,7 @@ jobs:
           version-file: "./uv.lock"
       
   docs:
-    name: Build documentation
+    name: Build documentation (Sphinx)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
