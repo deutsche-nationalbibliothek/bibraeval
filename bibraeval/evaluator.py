@@ -38,6 +38,24 @@ class Evaluator:
         | None = None,
         drop_mismatched_doc_ids: bool = False,
     ):
+        """Configure a one-call evaluation workflow.
+
+        Args:
+            gt_path: Directory of JSON records or a JSONL file for ground truth.
+            pred_path: Directory of JSON records or a JSONL file for predictions.
+            schema: Pydantic model used to validate each record's metadata.
+            mode: Summary mode: ``doc-avg``, ``field-avg`` (the default), or
+                ``micro-avg``.
+            field_metric_config: Per-field configuration as a
+                ``FieldMetricMapping``, flat mapping, or YAML path. With no
+                configuration all model fields use exact matching and weight
+                1.0.
+            drop_mismatched_doc_ids: If true, evaluate only IDs present in both
+                datasets; otherwise mismatched IDs raise ``ValueError``.
+
+        Raises:
+            ValueError: If ``mode`` is unsupported.
+        """
         if mode not in get_args(AggregationMode):
             raise ValueError(
                 f"Invalid mode {mode!r}; expected one of {get_args(AggregationMode)}."
@@ -53,7 +71,10 @@ class Evaluator:
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
 
     def compute_metrics(self) -> pl.DataFrame:
-        """Load records, compare them and return the summarised metrics."""
+        """Load records, compare them, and return summary metrics.
+
+        The result has ``metric``, ``mode``, ``value``, and ``support`` columns.
+        """
         comparator = Comparator(
             ground_truth=self._load(self.gt_path),
             predictions=self._load(self.pred_path),

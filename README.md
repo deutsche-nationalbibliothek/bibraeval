@@ -9,364 +9,84 @@ Evaluating descriptive cataloguing records created with BIBRA.
 tool, to generate bibliographic metadata from a given PDF-Input.
 `BIBRA-Eval` provides tooling to make direct comparisons of
 LLM-generated BIBRA JSON-Records with gold-standard records coming from
-a different source (e.g. manual indexing).
+a different source (e.g. manual indexing). It validates records against a 
+Pydantic schema, scores configured fields, and summarizes precision, recall, 
+and F1 with document, field, or micro averaging. Its comparison matrix also 
+supports stratified drill-downs.
 
-## Metrics
+## Installation
 
-BIBRA-Eval requires records that follow a specific JSON-scheme. Built on
-top of the record scheme is an evaluation scheme, that specifies the
-fields that should be part of the comparison and the metrics that apply
-to each field.
+From a checkout of this package, install it into the active environment:
 
-- binary metrics: some fields like `year` or `isbn` are best evaluated
-  by requiring exact matches. So matches are either true or false
-- string difference: fields like title or publisher should allow some
-  degree of tolerance between two records. Here we measure the
-  levenshtein distance, i.e. the minimal number of string edits that
-  lead from field content `x` to the gold-standard content `y`
-- llm-as-a-judge (`experimental`): fields with complex content, that may
-  be expressed in equivalent but dissimilar form, may be judged by a
-  light LLM
-- metrics for list comparison: fields with multiple subfields (e.g. a
-  list of authors) are aligned with a fuzzy match. The score per field
-  is calculated as the average levenshtein distance between the matches
-
-The evaluation scheme also supports optional weights per field,
-e.g. correctness of the title could be more important then correctness
-of the alt_title.
-
-## Levels of evaluation
-
-Metrics can be calculated along various levels:
-
-
-- Level 1: direct record comparison (record to record results): this forms the
-  basis for all other computations
-- Level 2: Intermediate Results
-  - results per field: what is the average agreement across all documents in a
-    test set for one particular field
-  - results per document: what is the average agreement across all fields for one
-    particular document
-- Level 3: Summary Metrics
-  - document macro-average: compute average result per doc first (along
-    all fields), then compute average across documents
-  - field macro-average: compute average results per field (along all
-  documents), then compute average across all fields
-  - micro-average: direct pooling of field-to-field results in one score 
-
-## Data format
-
-The required input format is either a folder (`directory-format`) of
-json-records following BIBRA’s JSON-Scheme or a single jsonl-file (
-`single-file-format`) containing all records of a test set in a single
-file.
-
-For data in `directory-format` the gold-standard and the predictions
-should be separate directories. Matches between records are performed on
-the basis of record-file-names. So these should match between both
-directories.
-
-For data in ( `single-file-format`) a `doc_id` field is mandatory, to
-make matches.
-
-## Client
-
-BIBRA-Eval provides a client to start evaluation from terminal.
-
-Directory format:
-
-``` bash
-bibra-eval --mode field-avg GOLD-STANDRAD-DIR/ PREDICTIONS-DIR/
+```bash
+uv pip install -e .
 ```
 
-| field             | prec      | rec | f1  |
-| ----------------- | --------- | --- | --- |
-| title             | ...       | ... | ... |
-| creator           | ...       | ... | ... |
-| ...               | ...       | ... | ... |
-| ----------------- |-----------|-----|-----|
-| TOTAL (field-avg) | ...       | ... | ... |
+The package requires Python 3.11 or newer. Import the public API with
+`import bibraeval`; no `bibra-eval` command-line interface is currently
+provided.
 
-The setting `--mode field-avg` is default. You can also use `micro` and
-`doc-avg`.
+## Quick start
 
-## Python API
-
-For interactive analysis BIBRA-Eval provides a python API to use in
-individually tailored evaluation worksflows:
-
-``` python
-import bibraeval as be
-
-GT_DIR = ...
-PRED_DIR = ...
-
-eval_schema = ...
-
-comp = be.comparator(gt_dir=GT_DIR, pred_dir=PRED_DIR)
-
-# show a data frame with a field-by-field comparison
-comp.comparison_matrix
-```
-
-The comparison matrix has a tabular format:
-
-| doc_id | field_name | gt_present | pred_present | gt_value | pred_value |
-|----|----|----|----|----|----|
-| `103571650X` | `language` | false | false | `[]` | `[]` |
-| `103571650X` | `p-isbn` | false | true | `[]` | `['978-3-86539-327-2']` |
-| `103571650X` | `title` | true | true | `Werke der Freiheit` | `Werke der Freiheit` |
-| `103571650X` | `year` | false | false | `null` | `null` |
-
-### Aggregating Results on different Axis
+Prepare two datasets with matching document IDs, then pass their paths and a
+Pydantic metadata model to `Evaluator`:
 
 ```python
-# compute cell wise agreement on comparison matrix
-res_per_doc_and_field = comp.compute_cell_agreement()
+from pydantic import BaseModel
 
-# compute document average results (per field)
-res_per_field = comp.compute_intermediate_results(axis="doc_id")
-
-# compute document average results (per doc_id)
-res_per_doc = comp.compute_intermediate_results(axis="field")
-
-# overall doc-average
-comp.summarise(res_per_doc)
-
-# overall field-average
-comp.summarise(res_per_field)
-
-# A wrapper for all the above (similar to the client command bibra-eval)
-comp.compute_metrics()
-```
-
-## Class Diagram
-
-```mermaid
-classDiagram
-    class MetadataT {
-        <<type parameter>>
-    }
-
-    class AggregationMode {
-        <<type alias>>
-        doc-avg | field-avg | micro-avg
-    }
-
-    class Record~MetadataT~ {
-        +str doc_id
-        +MetadataT metadata
-        +from_payload(doc_id, payload, schema)
-    }
-
-    class RecordCollection~MetadataT~ {
-        +dict records
-        +create_from_dir(directory, schema)
-        +create_from_file(file_path, schema)
-        +add_record(record)
-        +get_record(doc_id)
-        +add_payload(doc_id, payload, schema)
-        +as_list()
-    }
-
-    class Comparator {
-        +RecordCollection ground_truth
-        +RecordCollection predictions
-        +bool drop_mismatched_doc_ids
-        +FieldMetricMapping metric_schema
-        +DataFrame comparison_matrix
-        +compute_cell_agreement(comparison_matrix, metric)
-        -_check_doc_id_match()
-        -_fuse_records()
-    }
-
-    class Aggregator {
-        +Comparator comparator
-        +DataFrame cells
-        +IntermediateResults intermediate_results
-        +compute_intermediate_results(group_by) IntermediateResults
-        +summarise_results(intermediate) DataFrame
-        -_compute_cell_scores(cells) DataFrame
-        -_validate_group_by(group_cols)
-    }
-
-    class Evaluator {
-        +Path gt_path
-        +Path pred_path
-        +type schema
-        +AggregationMode mode
-        +field_metric_schema field_metric_config
-        +bool drop_mismatched_doc_ids
-        +compute_metrics() DataFrame
-        -_load(path) RecordCollection
-    }
-
-    class IntermediateResults {
-        +DataFrame data
-        +tuple group_by
-        +AggregationMode mode
-        +strata list
-        +weighted_summary bool
-    }
-
-    class FieldMetricMapping {
-        +dict fields
-        +from_dict(data)
-        +from_yaml(path)
-        +build_metric(field_name) FieldMetric
-    }
-
-    class FieldMetricConfig {
-        +metric exact | levenshtein
-        +match_threshold float | None
-        +weight float
-        +list_comparison all-of | any-of
-    }
-
-    class FieldMetric {
-        +score(gt_value, predicted_value) float
-        #_score_scalar(gt_value, predicted_value) float
-        #_match(gt_values, predicted_values) tuple
-    }
-
-    class Exact {
-        #_score_scalar(gt_value, predicted_value) float
-        #_match(gt_values, predicted_values) tuple
-    }
-
-    class Levenshtein {
-        +float threshold
-        +Levenshtein(threshold)
-        #_score_scalar(gt_value, predicted_value) float
-        #_match(gt_values, predicted_values, threshold) tuple
-    }
-
-    RecordCollection~MetadataT~ "1" *-- "0..*" Record~MetadataT~ : records
-    BaseModel <|-- Record~MetadataT~
-    BaseModel <|-- RecordCollection~MetadataT~
-    BaseModel <|-- FieldMetricMapping
-    BaseModel <|-- FieldMetricConfig
-    Record~MetadataT~ --> MetadataT : metadata
-    Comparator --> RecordCollection~MetadataT~ : ground_truth and predictions
-    Comparator --> FieldMetricMapping : optional configuration
-    Comparator ..> FieldMetric : metric argument
-    Comparator ..> exact : default metric
-    Comparator --> DataFrame : comparison_matrix
-    Aggregator --> Comparator : comparison source
-    Aggregator *-- IntermediateResults : latest result
-    IntermediateResults --> AggregationMode
-    FieldMetricMapping "1" *-- "1..*" FieldMetricConfig : fields
-    FieldMetricMapping ..> FieldMetric : builds configured metric
-    FieldMetric <|-- Exact
-    FieldMetric <|-- Levenshtein
-    Evaluator ..> RecordCollection~MetadataT~ : loads
-    Evaluator ..> Comparator : builds
-    Evaluator ..> Aggregator : builds
-    Evaluator --> FieldMetricMapping : optional configuration
-    Evaluator --> AggregationMode
-```
-
-## Example
-
-BIBRA-Eval allows specification of custom Metadata Schemas and a custom schema
-to define metrics per field. List-Type fields are matched on a fuzzy 
-matching principle, that can be adjusted with a custom `match_threshold`. 
-Lists can be compared in two modes: "all-of" counts all values in ground_truth
-and predictions and computes an f1-score between both.
-"any-of" only return the best match. 
-E.g. if language is a field that can have multiple values, "any-of" comparison 
-would only require for one of the values to be found, whereas "all-of" 
-requires all values to be found.
-
-```python
-from pydantic import BaseModel, ConfigDict, Field
-from bibraeval.comparator import Comparator
+from bibraeval import Evaluator
 
 
 class PublicationMetadata(BaseModel):
-    """Response model for publication metadata extraction."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    language: list[str] = Field(default_factory=list)
     title: str | None = None
     year: str | None = None
-    authors: list[str] = Field(default_factory=list)
-    p_isbn: list[str] = Field(default_factory=list, alias="p-isbn")
 
 
-FieldMetricMapping = {
-    "title": {"metric": "Levenshtein", "match_threshold": 0.7, "weight": 2.0},
-    "year": {"metric": "Exact", "weight": 1.0},
-    "authors": {
-        "metric": "Levenshtein",
-        "match_threshold": 0.7,
-        "weight": 1.5,
-        "list_comparison": "all-of",
-    },
-    "p-isbn": {"metric": "Exact", "weight": 1.0},
-    "language": {
-        "metric": "Levenshtein",
-        "match_threshold": 0.6,
-        "weight": 1.0,
-        "list_comparison": "all-of",
-    },
-}
-
-ground_truth = RecordCollection[PublicationMetadata]()
-ground_truth.add_payload(
-    doc_id="123",
-    payload={
-        "title": "Epic work on subject indexing",
-        "authors": ["Librarian, The"],
-        "language": ["eng"],
-    },
-    schema=PublicationMetadata,
-)
-
-ground_truth.add_payload(
-    doc_id="007",
-    payload={
-        "title": "Struggles of modern library systems - A Collection",
-        "authors": ["Musterperson, Maxi", "Doe, John"],
-        "year": "1915",
-        "language": ["ger", "eng"],
-    },
-    schema=PublicationMetadata,
-)
-
-predictions = RecordCollection[PublicationMetadata]()
-predictions.add_payload(
-    doc_id="123",
-    payload={
-        "title": "_Epic work on subject indexing_",
-        "authors": ["Librarian, A"],
-        "language": ["eng"],
-    },
-    schema=PublicationMetadata,
-)
-
-predictions.add_payload(
-    doc_id="007",
-    payload={
-        "title": "Struggles of modern library systems",
-        "year": "2026",
-        "authors": ["Musterperson", "Doe"],
-        "language": ["german", "eng"],
-        "p-isbn": ["978-3-86539-327-2"],
-    },
-    schema=PublicationMetadata,
-)
-
-
-comp = Comparator(
-    ground_truth,
-    predictions,
-    metric_schema=FieldMetricMapping,
-    drop_mismatched_doc_ids=True,
-)
-
-comp.comparison_matrix
-
-comp.compute_cell_agreement()
+result = Evaluator(
+    "data/gold.jsonl",
+    "data/predictions.jsonl",
+    PublicationMetadata,
+).compute_metrics()
+print(result)
 ```
+
+By default, every schema field is compared with exact matching and uniform
+weight. `Evaluator` defaults to `field-avg`; set `mode` to `doc-avg` or
+`micro-avg` to choose another aggregation. The result is a Polars DataFrame
+with one row per metric and `metric`, `mode`, `value`, and `support` columns.
+
+## Inputs and matching
+
+Each input can be a directory of JSON files or a JSONL file. Directory
+filenames (without `.json`) are document IDs; JSONL records require a non-empty
+string `doc_id` property. Remaining values are validated by the supplied
+Pydantic model. IDs must match across datasets by default. Set
+`drop_mismatched_doc_ids=True` to evaluate only the IDs present on both sides.
+
+## Field metrics
+
+Configure fields with `FieldMetricMapping` or a dictionary/YAML file. Supported
+metrics are `exact` and `levenshtein`; each field may also have a positive
+weight and list comparison mode (`all-of` or `any-of`). Levenshtein
+configuration requires a `match_threshold` between 0 and 1 for aligning list
+items. Scalar Levenshtein scores are similarity ratios and are not cut off by
+that list-alignment threshold.
+
+## Documentation
+
+Start with the [documentation index](docs/index.md) for focused guides and the
+generated [API reference](docs/api/index.md). See the
+[architecture guide](docs/guides/architecture.md) for a complete class diagram
+for developers.
+To build the Sphinx site, install the `docs` dependency group and run
+`sphinx-build -W -b html docs docs/_build/html` from this directory. See
+[docs/README.md](docs/README.md) for the exact local setup commands.
+
+## Disclaimer
+
+This project was constructed under assistance of Github Copilot. While the
+class hierarchy and overall software specification comes from the developers, 
+AI  assistance was used to generate code, tests and documentation. All AI 
+generated content has been reviewed line by line and the authors take
+full responsibility for the generated code (AI:AMBER following the 
+[AI Traffic Lights Protocol](https://nlkw.de/en/blog/ai-tlp/) by Nila Löber).

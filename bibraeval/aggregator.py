@@ -17,7 +17,12 @@ _UNGROUPABLE = ("gt_value", "pred_value")
 
 @dataclass(frozen=True)
 class IntermediateResults:
-    """Per-group precision, recall and f1 together with their grouping variables."""
+    """Per-group metrics and the grouping metadata used to produce them.
+
+    ``data`` contains grouping columns, precision/recall/F1, and support
+    counts. ``group_by`` records the grouping columns; ``mode`` identifies
+    document-, field-, or micro-averaging.
+    """
 
     data: pl.DataFrame
     group_by: tuple[str, ...]
@@ -25,15 +30,22 @@ class IntermediateResults:
 
     @property
     def strata(self) -> list[str]:
+        """Grouping columns other than the built-in document/field keys."""
         return [col for col in self.group_by if col not in _PRIMARY_KEYS]
 
     @property
     def weighted_summary(self) -> bool:
+        """Whether field weights are applied when producing calling the
+        summarise_results method."""
         return "field_name" in self.group_by
 
 
 class Aggregator:
-    """Aggregates the field-level comparison of a `Comparator` into metrics."""
+    """Aggregate a comparator's field-level scores into precision/recall/F1.
+
+    Cell scores are computed at initialization. Add any custom strata columns to
+    ``comparator.comparison_matrix`` before constructing the aggregator.
+    """
 
     def __init__(self, comparator: Comparator):
         self.comparator = comparator
@@ -70,6 +82,14 @@ class Aggregator:
         `field_name`; other columns may be included as strata.
         When grouping by `field_name`, field weights are carried to the summary
         step; otherwise they are applied as weighted means within each group.
+
+        Set ``group_by=None`` for micro-averaging. For a stratified micro
+        average, group only by the desired (additional) stratification columns.
+        Value columns cannot be used as grouping keys.
+
+        Raises:
+            ValueError: If a grouping column is missing, a value column is
+                requested, or both primary keys are included.
         """
         if group_by is None:
             group_cols = ()
@@ -117,10 +137,16 @@ class Aggregator:
     def summarise_results(
         self, intermediate: IntermediateResults | None = None
     ) -> pl.DataFrame:
-        """
-        Macro-average intermediate results, preserving stratification columns.
-        In case of micro averaging, this method will not perform any additional
-          aggregation.
+        """Summarize intermediate results while preserving strata.
+
+        Macro modes average the intermediate results; micro mode returns its
+        pooled result without another aggregation. The long-form output has one
+        row per metric and stratum, with ``metric``, ``mode``, ``value``, and
+        ``support`` columns in addition to any strata columns.
+
+        Raises:
+            ValueError: If no intermediate results are available and none are
+                passed explicitly.
         """
         if intermediate is None:
             intermediate = self.intermediate_results
