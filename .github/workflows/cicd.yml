@@ -35,6 +35,21 @@ jobs:
       - name: Run tests with coverage
         run: uv run pytest --cov=bibraeval --cov-report=term-missing --cov-report=xml
 
+      - name: Add coverage to job summary
+        if: always()
+        run: |
+          if [ -f coverage.xml ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET
+      
+          root = ET.parse("coverage.xml").getroot()
+          rate = float(root.attrib["line-rate"]) * 100
+      
+          print("## Test coverage")
+          print(f"**Line coverage: {rate:.1f}%**")
+          PY
+          fi
+
   ruff:
     name: Lint and check format (Ruff)
     runs-on: ubuntu-latest
