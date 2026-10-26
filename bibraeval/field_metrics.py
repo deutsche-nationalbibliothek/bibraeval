@@ -10,24 +10,27 @@ ListComparison = Literal["all-of", "any-of"]
 
 
 class FieldMetric:
-    """
-    Abstract class for field-level metrics in record comparison.
-    This class should be subclassed to implement specific field-level metrics.
+    """Base class for scalar and list-valued field agreement metrics.
+
+    Subclasses implement scalar scoring and list alignment. ``all-of`` scores
+    aligned list entries using precision/recall/F1; ``any-of`` returns the
+    best scalar agreement among aligned entries.
     """
 
     def __init__(self, list_comparison: ListComparison = "all-of") -> None:
         self.list_comparison = list_comparison
 
     def score(self, gt_value: Any, predicted_value: Any) -> float:
-        """
-        Compute the score for a field value pair.
+        """Compute agreement for a scalar pair or two lists of values.
 
         Args:
-            gt_value: The value of the field in the gold standard record.
-            predicted_value: The value of the field in the predicted record.
+            gt_value: Field value in the gold-standard record.
+            predicted_value: Field value in the predicted record.
 
         Returns:
-            A numeric score representing the agreement of both values.
+            A score between 0 and 1. Missing-value presence policy is handled
+            separately by ``Aggregator``; direct calls score values according
+            to the selected metric.
         """
         if isinstance(gt_value, list) and isinstance(predicted_value, list):
             if self.list_comparison == "any-of":
@@ -116,7 +119,7 @@ class FieldMetric:
 
 
 class Exact(FieldMetric):
-    """Field metric that checks for exact matches between two values."""
+    """Score scalar values as equal (1) or unequal (0), with list support."""
 
     def _score_scalar(self, gt_value: Any, predicted_value: Any) -> float:
         return 1.0 if gt_value == predicted_value else 0.0
@@ -182,9 +185,11 @@ class Exact(FieldMetric):
 
 
 class Levenshtein(FieldMetric):
-    """
-    Field metric that checks for matches between two values using Levenshtein
-    distance.
+    """Score scalars by normalized Levenshtein similarity and align lists.
+
+    Scalar scores use ``Levenshtein.ratio`` and are not thresholded. For list
+    values, the threshold controls which fuzzy pairs can be aligned; exact
+    matches are preferred, and each value is used at most once.
     """
 
     def __init__(
