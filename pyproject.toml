@@ -3,7 +3,7 @@ name = "bibraeval"
 version = "0.0.1-dev"
 description = "Evaluating descriptive cataloguing records created with BIBRA"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "bibra>=0.1.0",
     "dvc>=3.67.1",
