@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
 MetadataT = TypeVar("MetadataT", bound=BaseModel)
 
 
-class Record(BaseModel, Generic[MetadataT]):
+class Record[MetadataT: BaseModel](BaseModel):
     """A record with a stable document identifier and validated metadata.
 
     ``metadata`` is parsed with the caller-supplied Pydantic model; ``doc_id``
@@ -37,7 +37,7 @@ class Record(BaseModel, Generic[MetadataT]):
         return cls(doc_id=doc_id, metadata=validated_metadata)
 
 
-class RecordCollection(BaseModel, Generic[MetadataT]):
+class RecordCollection[MetadataT: BaseModel](BaseModel):
     """A collection of records keyed by document identifier."""
 
     records: dict[str, Record[MetadataT]] = Field(default_factory=dict)
