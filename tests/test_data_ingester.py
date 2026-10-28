@@ -104,14 +104,14 @@ def test_record_collection_create_from_file_loads_jsonl_records(tmp_path) -> Non
     record_path = tmp_path / "records.jsonl"
     record_path.write_text(
         (
-            '{"doc_id": "103571650X", "title": "Werke der Freiheit", '
-            '"year": "2013"}\n'
-            '{"doc_id": "991651952", "language": ["de"], '
+            '{"doc_id": "103571650X", "record": {"title": "Werke der Freiheit", '
+            '"year": "2013"}}\n'
+            '{"doc_id": "991651952", "record": {"language": ["de"], '
             '"title": "DAS GESAMTWERK WOLFGANG BORCHERT", '
             '"alt_title": null, "creator": ["Wolfgang Borchert"], '
             '"year": null, "publisher": ["Rowohlt Taschenbuch Verlag"], '
             '"doi": null, "e-isbn": [], "p-isbn": [], '
-            '"e-issn": null, "p-issn": null, "type_coar": "book"}\n'
+            '"e-issn": null, "p-issn": null, "type_coar": "book"}}\n'
         ),
         encoding="utf-8",
     )

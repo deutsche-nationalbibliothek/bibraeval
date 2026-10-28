@@ -47,7 +47,10 @@ def _write_dir(directory: Path, records: dict[str, dict]) -> Path:
 
 
 def _write_jsonl(file_path: Path, records: dict[str, dict]) -> Path:
-    lines = [json.dumps({"doc_id": doc_id, **p}) for doc_id, p in records.items()]
+    lines = [
+        json.dumps({"doc_id": doc_id, "record": payload})
+        for doc_id, payload in records.items()
+    ]
     file_path.write_text("\n".join(lines))
     return file_path
 
