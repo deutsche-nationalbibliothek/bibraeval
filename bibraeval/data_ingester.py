@@ -93,11 +93,16 @@ class RecordCollection[MetadataT: BaseModel](BaseModel):
                 if not isinstance(doc_id, str) or not doc_id:
                     msg = f"Line {line_number} in {file_path} must contain a doc_id."
                     raise ValueError(msg)
+                raw_record = payload.get("record")
+                if not isinstance(raw_record, dict) or not raw_record:
+                    msg = (
+                        f"Line {line_number} in {file_path} "
+                        "must contain a record object."
+                    )
+                    raise TypeError(msg)
                 collection.add_payload(
                     doc_id=doc_id,
-                    payload={
-                        key: value for key, value in payload.items() if key != "doc_id"
-                    },
+                    payload=raw_record,
                     schema=schema,
                 )
         return collection
