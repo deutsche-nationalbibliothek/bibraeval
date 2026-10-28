@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.15.7
+  rev: v0.16.10
   hooks:
     # Run the linter.
     - id: ruff-check
@@ -10,6 +10,6 @@ repos:
       types_or: [ python, pyi, jupyter, pyproject ]
       args: [ --check ]
 - repo: https://github.com/astral-sh/ty-pre-commit
-  rev: v0.0.78
+  rev: v0.0.92
   hooks:
     - id: ty
