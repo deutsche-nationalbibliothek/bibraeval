@@ -69,21 +69,42 @@ class Evaluator:
         self.mode = mode
         self.field_metric_config = field_metric_config
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
+        self.intermediate = None
+        self.comparator = None
+        self.aggregator = None
 
     def compute_metrics(self) -> pl.DataFrame:
         """Load records, compare them, and return summary metrics.
 
         The result has ``metric``, ``mode``, ``value``, and ``support`` columns.
         """
-        comparator = Comparator(
+        self.comparator = Comparator(
             ground_truth=self._load(self.gt_path),
             predictions=self._load(self.pred_path),
             metric_schema=self.field_metric_config,
             drop_mismatched_doc_ids=self.drop_mismatched_doc_ids,
         )
-        aggregator = Aggregator(comparator)
-        intermediate = aggregator.compute_intermediate_results(_GROUP_BY[self.mode])
-        return aggregator.summarise_results(intermediate)
+        self.aggregator = Aggregator(self.comparator)
+        self.intermediate = self.aggregator.compute_intermediate_results(
+            _GROUP_BY[self.mode]
+        )
+        return self.aggregator.summarise_results(self.intermediate)
+
+    def show_comparison_matrix(self) -> pl.DataFrame:
+        """Return the comparison matrix for the current evaluation."""
+        if self.comparator is None:
+            raise ValueError(
+                "Comparison matrix is not available. Run compute_metrics() first."
+            )
+        return self.comparator.compute_cell_agreement()
+
+    def show_intermediate_results(self) -> pl.DataFrame:
+        """Return the intermediate results for the current evaluation."""
+        if self.intermediate is None:
+            raise ValueError(
+                "Intermediate results are not available. Run compute_metrics() first."
+            )
+        return self.intermediate.data
 
     def _load(self, path: Path) -> RecordCollection[BaseModel]:
         if path.is_dir():
