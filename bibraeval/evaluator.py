@@ -90,7 +90,7 @@ class Evaluator:
         )
         return self.aggregator.summarise_results(self.intermediate)
 
-    def show_comparison_matrix(self) -> pl.DataFrame:
+    def get_comparison_matrix(self) -> pl.DataFrame:
         """Return the comparison matrix for the current evaluation."""
         if self.comparator is None:
             raise ValueError(
@@ -98,7 +98,7 @@ class Evaluator:
             )
         return self.comparator.compute_cell_agreement()
 
-    def show_intermediate_results(self) -> pl.DataFrame:
+    def get_intermediate_results(self) -> pl.DataFrame:
         """Return the intermediate results for the current evaluation."""
         if self.intermediate is None:
             raise ValueError(
