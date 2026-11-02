@@ -26,6 +26,19 @@ summary = evaluator.compute_metrics()
 print(summary)
 ```
 
+```text
+shape: (3, 4)
+┌────────┬───────────┬──────────┬─────────┐
+│ metric ┆ mode      ┆ value    ┆ support │
+│ ---    ┆ ---       ┆ ---      ┆ ---     │
+│ str    ┆ str       ┆ f64      ┆ f64     │
+╞════════╪═══════════╪══════════╪═════════╡
+│ f1     ┆ field-avg ┆ 0.431682 ┆ 43.8    │
+│ prec   ┆ field-avg ┆ 0.460207 ┆ 39.8    │
+│ rec    ┆ field-avg ┆ 0.411724 ┆ 43.0    │
+└────────┴───────────┴──────────┴─────────┘
+```
+
 The default metric is exact matching with uniform field weights. Configure
 fuzzy matching and weights with `field_metric_config`; choose `doc-avg`,
 `field-avg`, or `micro-avg` with `mode`. These modes have the following meaning:
