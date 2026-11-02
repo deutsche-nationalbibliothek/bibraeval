@@ -59,7 +59,7 @@ Use one JSON object per line, including a non-empty string `"doc_id"` and the
 
 Duplicate IDs replace earlier records in the same collection, so keep IDs
 unique. Invalid JSON, a non-object record, a missing JSONL `doc_id`, or schema
-validation errors int the "record" part stop ingestion.
+validation errors in the "record" part stop ingestion.
 
 ## Matching IDs
 
