@@ -76,7 +76,14 @@ class Evaluator:
     def compute_metrics(self) -> pl.DataFrame:
         """Load records, compare them, and return summary metrics.
 
-        The result has ``metric``, ``mode``, ``value``, and ``support`` columns.
+        Returns:
+            A polars dataframe with one row per ``metric``, summarised according to the
+            specified ``mode``. The dataframe's columns are: 
+            
+            * ``metric`` containing the metric name, 
+            * ``mode`` containing the aggregation mode, 
+            * ``value`` containing the aggregated metric value,
+            * ``support`` containing the number of records used to compute the metric.
         """
         self.comparator = Comparator(
             ground_truth=self._load(self.gt_path),
@@ -91,7 +98,26 @@ class Evaluator:
         return self.aggregator.summarise_results(self.intermediate)
 
     def get_comparison_matrix(self) -> pl.DataFrame:
-        """Return the comparison matrix for the current evaluation."""
+        """Return the comparison matrix for the current evaluation.
+        
+        Returns:
+            A polars dataframe with one row per document and metadata field, containing
+            the following columns:
+
+            * ``doc_id``: the document ID,
+            * ``field_name``: the name of the metadata field,
+            * ``gt_present``: whether the ground truth value is present,
+            * ``pred_present``: whether the predicted value is present,
+            * ``gt_value``: the ground truth value for the field,
+            * ``pred_values``: the predicted value for the field,
+            * ``cell_agreement``: how much the ground truth and predicted values agree 
+                according to the field's metric,
+            * ``weight``: the weight assigned to the field for metric computation.
+    
+        Raises:
+            ValueError: If the comparison matrix is not available, which occurs if
+                ``compute_metrics()`` has not been called yet. 
+        """
         if self.comparator is None:
             raise ValueError(
                 "Comparison matrix is not available. Run compute_metrics() first."
@@ -99,7 +125,16 @@ class Evaluator:
         return self.comparator.compute_cell_agreement()
 
     def get_intermediate_results(self) -> pl.DataFrame:
-        """Return the intermediate results for the current evaluation."""
+        """Return the intermediate results for the current evaluation.
+        
+        Returns:
+            A polars dataframe precision, recall and f1 per group.
+            The exact structure of the dataframe depends on the aggregation mode.
+
+        Raises:
+            ValueError: If the intermediate results are not available, which occurs if
+                ``compute_metrics()`` has not been called yet.
+        """
         if self.intermediate is None:
             raise ValueError(
                 "Intermediate results are not available. Run compute_metrics() first."
