@@ -176,3 +176,62 @@ def test_mismatched_doc_ids_raise_when_not_dropped(
 
     with pytest.raises(ValueError, match="mismatched doc_ids"):
         evaluator.compute_metrics()
+
+
+def test_get_comparison_matrix_raises_if_not_computed(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+
+    with pytest.raises(ValueError, match="Comparison matrix is not available"):
+        evaluator.get_comparison_matrix()
+
+
+def test_get_comparison_matrix_returns_correct_structure(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+    evaluator.compute_metrics()
+
+    comparison_matrix = evaluator.get_comparison_matrix()
+
+    assert comparison_matrix.height > 0
+    assert set(comparison_matrix.columns) == {
+        "doc_id",
+        "field_name",
+        "gt_present",
+        "pred_present",
+        "gt_value",
+        "pred_value",
+        "cell_agreement",
+        "weight",
+    }
+
+
+def test_get_intermediate_results_raises_if_not_computed(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+
+    with pytest.raises(ValueError, match="Intermediate results are not available"):
+        evaluator.get_intermediate_results()
+
+
+def test_get_intermediate_results_returns_correct_structure(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+    evaluator.compute_metrics()
+
+    intermediate_results = evaluator.get_intermediate_results()
+
+    assert intermediate_results.height > 0
+    assert set(intermediate_results.columns) == {
+        "field_name",
+        "support_prec",
+        "prec",
+        "support_rec",
+        "rec",
+        "weight",
+        "f1",
+    }
