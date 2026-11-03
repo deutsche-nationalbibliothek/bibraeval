@@ -78,10 +78,10 @@ class Evaluator:
 
         Returns:
             A polars dataframe with one row per ``metric``, summarised according to the
-            specified ``mode``. The dataframe's columns are: 
-            
-            * ``metric`` containing the metric name, 
-            * ``mode`` containing the aggregation mode, 
+            specified ``mode``. The dataframe's columns are:
+
+            * ``metric`` containing the metric name,
+            * ``mode`` containing the aggregation mode,
             * ``value`` containing the aggregated metric value,
             * ``support`` containing the number of records used to compute the metric.
         """
@@ -99,7 +99,7 @@ class Evaluator:
 
     def get_comparison_matrix(self) -> pl.DataFrame:
         """Return the comparison matrix for the current evaluation.
-        
+
         Returns:
             A polars dataframe with one row per document and metadata field, containing
             the following columns:
@@ -110,13 +110,13 @@ class Evaluator:
             * ``pred_present``: whether the predicted value is present,
             * ``gt_value``: the ground truth value for the field,
             * ``pred_values``: the predicted value for the field,
-            * ``cell_agreement``: how much the ground truth and predicted values agree 
+            * ``cell_agreement``: how much the ground truth and predicted values agree
                 according to the field's metric,
             * ``weight``: the weight assigned to the field for metric computation.
-    
+
         Raises:
             ValueError: If the comparison matrix is not available, which occurs if
-                ``compute_metrics()`` has not been called yet. 
+                ``compute_metrics()`` has not been called yet.
         """
         if self.comparator is None:
             raise ValueError(
@@ -126,7 +126,7 @@ class Evaluator:
 
     def get_intermediate_results(self) -> pl.DataFrame:
         """Return the intermediate results for the current evaluation.
-        
+
         Returns:
             A polars dataframe precision, recall and f1 per group.
             The exact structure of the dataframe depends on the aggregation mode.
