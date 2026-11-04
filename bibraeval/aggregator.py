@@ -50,7 +50,8 @@ class Aggregator:
     def __init__(self, comparator: Comparator):
         self.comparator = comparator
         self.intermediate_results: IntermediateResults | None = None
-        self.cells = self._compute_cell_scores(comparator.compute_cell_agreement())
+        self.comparison_matrix = self.comparator.compute_cell_agreement()
+        self.cells = self._compute_cell_scores(self.comparison_matrix)
 
     @staticmethod
     def _compute_cell_scores(cells: pl.DataFrame) -> pl.DataFrame:
