@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import polars as pl
 import pytest
@@ -235,3 +236,115 @@ def test_get_intermediate_results_returns_correct_structure(
         "weight",
         "f1",
     }
+
+
+@pytest.mark.parametrize("results_dir", [None, "/some/path"])
+def test_compute_metrics_saves_results(
+    gt_dir: Path, pred_dir: Path, results_dir: str | None
+) -> None:
+    evaluator = Evaluator(
+        gt_dir, pred_dir, PublicationMetadata, field_metric_config=CONFIG
+    )
+
+    with patch.object(evaluator, "_save_results") as mock_save:
+        summary = evaluator.compute_metrics(results_dir)
+
+    assert isinstance(summary, pl.DataFrame)
+    assert {"metric", "mode", "value", "support"} <= set(summary.columns)
+
+    if results_dir is not None:
+        mock_save.assert_called_once_with(results_dir)
+    else:
+        mock_save.assert_not_called()
+
+
+def test_save_to_csv(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    df = pl.DataFrame(
+        {
+            "doc_id": ["doc1", "doc2"],
+            "title": ["Book A", "Book B"],
+        }
+    )
+
+    target_dir = tmp_path / "nested" / "results"
+    evaluator._save_to_csv(df, target_dir, "results.csv")
+
+    file_path = target_dir / "results.csv"
+
+    assert file_path.exists()
+
+    saved_df = pl.read_csv(file_path)
+    assert saved_df.equals(df)
+
+
+def test_save_to_csv_converts_object_columns(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    df = pl.DataFrame(
+        {
+            "doc_id": ["doc1", "doc2"],
+            "value": pl.Series(
+                "value",
+                [{"title": "Book A"}, {"title": "Book B"}],
+                dtype=pl.Object,
+            ),
+        }
+    )
+
+    evaluator._save_to_csv(df, tmp_path, "results.csv")
+
+    saved_df = pl.read_csv(tmp_path / "results.csv")
+
+    assert saved_df.schema["value"] == pl.String
+    assert saved_df["value"].to_list() == [
+        "{'title': 'Book A'}",
+        "{'title': 'Book B'}",
+    ]
+
+
+def test_save_results(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    evaluator.summary = pl.DataFrame(
+        {
+            "metric": ["f1", "prec", "rec"],
+            "mode": ["field-avg"] * 3,
+            "value": [0.9, 0.85, 0.95],
+            "support": [10, 10, 10],
+        }
+    )
+
+    evaluator.intermediate_results = pl.DataFrame(
+        {
+            "field_name": ["title", "author"],
+            "prec": [0.9, 0.8],
+            "rec": [0.95, 0.85],
+            "f1": [0.92, 0.82],
+        }
+    )
+
+    evaluator.comparison_matrix = pl.DataFrame(
+        {
+            "doc_id": ["doc1", "doc2"],
+            "field_name": ["title", "author"],
+            "cell_agreement": [1.0, 0.8],
+        }
+    )
+
+    evaluator._save_results(tmp_path)
+
+    expected_files = {
+        "summary_metrics.csv": evaluator.summary,
+        "intermediate_results.csv": evaluator.intermediate_results,
+        "comparison_matrix.csv": evaluator.comparison_matrix,
+    }
+
+    for filename, expected_df in expected_files.items():
+        file_path = tmp_path / filename
+
+        assert file_path.exists()
+
+        saved_df = pl.read_csv(file_path)
+        assert saved_df.equals(expected_df)
