@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, get_args
 
 import polars as pl
+import yaml
 from pydantic import BaseModel
 
 from bibraeval.aggregator import AggregationMode, Aggregator
@@ -78,8 +79,8 @@ class Evaluator:
         """Load records, compare them, and return summary metrics.
 
         Args:
-            results_dir: If specified, save the summary metrics, intermediate
-                results, and comparison matrix to CSV files in this directory.
+            results_dir: If specified, save the evaluation results as YAML and CSV
+            files in this directory.
 
         Returns:
             A polars dataframe with one row per ``metric``, summarised according to the
@@ -93,7 +94,7 @@ class Evaluator:
         Notes:
             Each call starts a new evaluation and clears results from previous runs.
             If the computation fails, no results from the failed run are available
-            through the getter methods. Failures during CSV export do not invalidate
+            through the getter methods. Failures during results export do not invalidate
             the computed results.
         """
         # Clear previous results to avoid returning stale data if computation fails
@@ -119,7 +120,7 @@ class Evaluator:
 
         # Save results to CSV if a directory is specified
         if results_dir is not None:
-            self._save_results(results_dir)
+            self.save_results(results_dir)
 
         return summary
 
@@ -167,6 +168,43 @@ class Evaluator:
             )
         return self.intermediate_results
 
+    def save_results(self, target_dir: str | Path) -> None:
+        """Save evaluation results:
+        - Summary as a YAML file.
+        - Intermediate results as a YAML file and, when mode != "micro-avg",
+        also as a CSV file.
+        - Comparison matrix as a CSV file.
+        """
+
+        if (
+            self.summary is None
+            or self.intermediate_results is None
+            or self.comparison_matrix is None
+        ):
+            raise ValueError("Results are not available. Run compute_metrics() first.")
+
+        self._save_to_yaml(
+            df=self.summary,
+            target_dir=target_dir,
+            filename="summary_metrics.yaml",
+        )
+        self._save_to_yaml(
+            df=self.intermediate_results,
+            target_dir=target_dir,
+            filename="intermediate_results.yaml",
+        )
+        if self.mode != "micro-avg":
+            self._save_to_csv(
+                df=self.intermediate_results,
+                target_dir=target_dir,
+                filename="intermediate_results.csv",
+            )
+        self._save_to_csv(
+            df=self.comparison_matrix,
+            target_dir=target_dir,
+            filename="comparison_matrix.csv",
+        )
+
     def _load(self, path: Path) -> RecordCollection[BaseModel]:
         if path.is_dir():
             return RecordCollection.create_from_dir(path, schema=self.schema)
@@ -175,14 +213,43 @@ class Evaluator:
     def _save_to_csv(
         self, df: pl.DataFrame, target_dir: str | Path, filename: str
     ) -> None:
-        """Save a polars dataframe to a CSV file.
+        """Save a Polars Dataframe to a CSV file.
 
         Args:
-            df: The polars dataframe to save.
+            df: The Polars Dataframe to save.
             target_dir: The directory where the CSV file will be saved.
             filename: The name of the CSV file.
         """
-        # csv writer does not support object dtype
+        # csv writer does not support object dtype - convert Object columns to strings
+        df = self._convert_object_columns(df)
+
+        target_dir = Path(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        file_path = target_dir / filename
+        df.write_csv(file_path)
+
+    def _save_to_yaml(
+        self, df: pl.DataFrame, target_dir: str | Path, filename: str
+    ) -> None:
+        """Save a Polars DataFrame to a YAML file.
+
+        Args:
+            df: The Polars DataFrame to save.
+            target_dir: The directory where the YAML file will be saved.
+            filename: The name of the YAML file.
+        """
+        # Convert Object columns to strings
+        df = self._convert_object_columns(df)
+
+        target_dir = Path(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        file_path = target_dir / filename
+        with file_path.open("w", encoding="utf-8") as f:
+            yaml.safe_dump(df.to_dicts(), f, allow_unicode=True, sort_keys=False)
+
+    def _convert_object_columns(self, df: pl.DataFrame) -> pl.DataFrame:
+        """Convert Object columns to strings."""
+
         object_columns = [col for col, dtype in df.schema.items() if dtype == pl.Object]
         for col in object_columns:
             df = df.with_columns(
@@ -195,32 +262,4 @@ class Evaluator:
                     dtype=pl.String,
                 )
             )
-
-        target_dir = Path(target_dir)
-        target_dir.mkdir(parents=True, exist_ok=True)
-        file_path = target_dir / filename
-        df.write_csv(file_path)
-
-    def _save_results(self, target_dir: str | Path) -> None:
-        """Save all evaluation results - summary, intermediate results, comparison
-        matrix - as CSV files."""
-
-        assert self.summary is not None
-        assert self.intermediate_results is not None
-        assert self.comparison_matrix is not None
-
-        self._save_to_csv(
-            df=self.summary,
-            target_dir=target_dir,
-            filename="summary_metrics.csv",
-        )
-        self._save_to_csv(
-            df=self.intermediate_results,
-            target_dir=target_dir,
-            filename="intermediate_results.csv",
-        )
-        self._save_to_csv(
-            df=self.comparison_matrix,
-            target_dir=target_dir,
-            filename="comparison_matrix.csv",
-        )
+        return df
