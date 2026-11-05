@@ -39,6 +39,14 @@ PRED = {
     "B": {"title": "Other", "year": "2020"},
 }
 
+DF = pl.DataFrame(
+    {
+        "doc_id": ["doc1", "doc2"],
+        "title": ["Book A", "Book B"],
+        "score": [1.0, None],
+    }
+)
+
 
 def _write_dir(directory: Path, records: dict[str, dict]) -> Path:
     directory.mkdir()
@@ -246,7 +254,7 @@ def test_compute_metrics_saves_results(
         gt_dir, pred_dir, PublicationMetadata, field_metric_config=CONFIG
     )
 
-    with patch.object(evaluator, "_save_results") as mock_save:
+    with patch.object(evaluator, "save_results") as mock_save:
         summary = evaluator.compute_metrics(results_dir)
 
     assert isinstance(summary, pl.DataFrame)
@@ -261,22 +269,15 @@ def test_compute_metrics_saves_results(
 def test_save_to_csv(tmp_path: Path) -> None:
     evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
 
-    df = pl.DataFrame(
-        {
-            "doc_id": ["doc1", "doc2"],
-            "title": ["Book A", "Book B"],
-        }
-    )
-
     target_dir = tmp_path / "nested" / "results"
-    evaluator._save_to_csv(df, target_dir, "results.csv")
+    filename = "test_results.yaml"
+    file_path = target_dir / filename
 
-    file_path = target_dir / "results.csv"
+    evaluator._save_to_csv(DF, target_dir, filename)
+    saved_df = pl.read_csv(file_path)
 
     assert file_path.exists()
-
-    saved_df = pl.read_csv(file_path)
-    assert saved_df.equals(df)
+    assert saved_df.equals(DF)
 
 
 def test_save_to_csv_converts_object_columns(tmp_path: Path) -> None:
@@ -294,7 +295,6 @@ def test_save_to_csv_converts_object_columns(tmp_path: Path) -> None:
     )
 
     evaluator._save_to_csv(df, tmp_path, "results.csv")
-
     saved_df = pl.read_csv(tmp_path / "results.csv")
 
     assert saved_df.schema["value"] == pl.String
@@ -304,7 +304,26 @@ def test_save_to_csv_converts_object_columns(tmp_path: Path) -> None:
     ]
 
 
-def test_save_results(tmp_path: Path) -> None:
+def test_save_to_yaml(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    target_dir = tmp_path / "nested" / "results"
+    filename = "test_results.yaml"
+    file_path = target_dir / filename
+
+    evaluator._save_to_yaml(DF, target_dir, filename)
+
+    assert file_path.exists()
+    with file_path.open(encoding="utf-8") as f:
+        result = yaml.safe_load(f)
+    assert result == [
+        {"doc_id": "doc1", "title": "Book A", "score": 1.0},
+        {"doc_id": "doc2", "title": "Book B", "score": None},
+    ]
+
+
+@pytest.fixture
+def evaluator(tmp_path: Path):
     evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
 
     evaluator.summary = pl.DataFrame(
@@ -333,18 +352,85 @@ def test_save_results(tmp_path: Path) -> None:
         }
     )
 
-    evaluator._save_results(tmp_path)
+    return evaluator
+
+
+def test_save_results_field_avg(evaluator, tmp_path: Path) -> None:
+    evaluator.mode = "field-avg"
+    evaluator.save_results(tmp_path)
 
     expected_files = {
-        "summary_metrics.csv": evaluator.summary,
+        "summary_metrics.yaml": evaluator.summary,
+        "intermediate_results.yaml": evaluator.intermediate_results,
         "intermediate_results.csv": evaluator.intermediate_results,
         "comparison_matrix.csv": evaluator.comparison_matrix,
     }
+    n_files = len(list(tmp_path.iterdir()))
 
     for filename, expected_df in expected_files.items():
         file_path = tmp_path / filename
+        if filename.endswith(".yaml"):
+            with file_path.open(encoding="utf-8") as f:
+                saved_df = pl.DataFrame(yaml.safe_load(f))
+        else:
+            saved_df = pl.read_csv(file_path)
 
         assert file_path.exists()
-
-        saved_df = pl.read_csv(file_path)
         assert saved_df.equals(expected_df)
+        assert n_files == len(expected_files)
+
+
+def test_save_results_doc_avg(evaluator, tmp_path: Path) -> None:
+    evaluator.mode = "doc-avg"
+    evaluator.save_results(tmp_path)
+
+    expected_files = {
+        "summary_metrics.yaml": evaluator.summary,
+        "intermediate_results.yaml": evaluator.intermediate_results,
+        "intermediate_results.csv": evaluator.intermediate_results,
+        "comparison_matrix.csv": evaluator.comparison_matrix,
+    }
+    n_files = len(list(tmp_path.iterdir()))
+
+    for filename, expected_df in expected_files.items():
+        file_path = tmp_path / filename
+        if filename.endswith(".yaml"):
+            with file_path.open(encoding="utf-8") as f:
+                saved_df = pl.DataFrame(yaml.safe_load(f))
+        else:
+            saved_df = pl.read_csv(file_path)
+
+        assert file_path.exists()
+        assert saved_df.equals(expected_df)
+        assert n_files == len(expected_files)
+
+
+def test_save_results_micro_avg(evaluator, tmp_path: Path) -> None:
+    evaluator.mode = "micro-avg"
+    evaluator.save_results(tmp_path)
+
+    expected_files = {
+        "summary_metrics.yaml": evaluator.summary,
+        "intermediate_results.yaml": evaluator.intermediate_results,
+        "comparison_matrix.csv": evaluator.comparison_matrix,
+    }
+    n_files = len(list(tmp_path.iterdir()))
+
+    for filename, expected_df in expected_files.items():
+        file_path = tmp_path / filename
+        if filename.endswith(".yaml"):
+            with file_path.open(encoding="utf-8") as f:
+                saved_df = pl.DataFrame(yaml.safe_load(f))
+        else:
+            saved_df = pl.read_csv(file_path)
+
+        assert file_path.exists()
+        assert saved_df.equals(expected_df)
+        assert n_files == len(expected_files)
+
+
+def test_save_results_raises_if_results_not_available(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, PublicationMetadata)
+
+    with pytest.raises(ValueError, match="Results are not available"):
+        evaluator.save_results(tmp_path)
