@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, get_args
 
 import polars as pl
+import yaml
 from pydantic import BaseModel
 
 from bibraeval.aggregator import AggregationMode, Aggregator
@@ -70,11 +71,38 @@ class Evaluator:
         self.field_metric_config = field_metric_config
         self.drop_mismatched_doc_ids = drop_mismatched_doc_ids
 
-    def compute_metrics(self) -> pl.DataFrame:
+        self.comparison_matrix = None
+        self.intermediate_results = None
+        self.summary = None
+
+    def compute_metrics(self, results_dir: str | Path | None = None) -> pl.DataFrame:
         """Load records, compare them, and return summary metrics.
 
-        The result has ``metric``, ``mode``, ``value``, and ``support`` columns.
+        Args:
+            results_dir: If specified, save the evaluation results as YAML and CSV
+            files in this directory.
+
+        Returns:
+            A polars dataframe with one row per ``metric``, summarised according to the
+            specified ``mode``. The dataframe's columns are:
+
+            * ``metric`` containing the metric name,
+            * ``mode`` containing the aggregation mode,
+            * ``value`` containing the aggregated metric value,
+            * ``support`` containing the number of records used to compute the metric.
+
+        Notes:
+            Each call starts a new evaluation and clears results from previous runs.
+            If the computation fails, no results from the failed run are available
+            through the getter methods. Failures during results export do not invalidate
+            the computed results.
         """
+        # Clear previous results to avoid returning stale data if computation fails
+        self.comparison_matrix = None
+        self.intermediate_results = None
+        self.summary = None
+
+        # Load records and compute metrics
         comparator = Comparator(
             ground_truth=self._load(self.gt_path),
             predictions=self._load(self.pred_path),
@@ -83,9 +111,167 @@ class Evaluator:
         )
         aggregator = Aggregator(comparator)
         intermediate = aggregator.compute_intermediate_results(_GROUP_BY[self.mode])
-        return aggregator.summarise_results(intermediate)
+        summary = aggregator.summarise_results(intermediate)
+
+        # Store results for later retrieval after successful computation
+        self.summary = summary
+        self.intermediate_results = intermediate.data
+        self.comparison_matrix = aggregator.comparison_matrix
+
+        # Save results to CSV if a directory is specified
+        if results_dir is not None:
+            self.save_results(results_dir)
+
+        return summary
+
+    def get_comparison_matrix(self) -> pl.DataFrame:
+        """Return the comparison matrix for the current evaluation.
+
+        Returns:
+            A Polars DataFrame with one row per document and metadata field, containing
+            the following columns:
+
+            * ``doc_id``: the document ID,
+            * ``field_name``: the name of the metadata field,
+            * ``gt_present``: whether the ground truth value is present,
+            * ``pred_present``: whether the predicted value is present,
+            * ``gt_value``: the ground truth value for the field,
+            * ``pred_value``: the predicted value for the field,
+            * ``cell_agreement``: how much the ground truth and predicted values agree
+                according to the field's metric,
+            * ``weight``: the weight assigned to the field for metric computation.
+
+        Raises:
+            ValueError: If the comparison matrix is not available, which occurs if
+                ``compute_metrics()`` has not been called yet.
+        """
+        if self.comparison_matrix is None:
+            raise ValueError(
+                "Comparison matrix is not available. Run compute_metrics() first."
+            )
+        return self.comparison_matrix
+
+    def get_intermediate_results(self) -> pl.DataFrame:
+        """Return the intermediate results for the current evaluation.
+
+        Returns:
+            A Polars DataFrame containing precision, recall and F1 per group.
+            The exact structure of the dataframe depends on the aggregation mode.
+
+        Raises:
+            ValueError: If the intermediate results are not available, which occurs if
+                ``compute_metrics()`` has not been called yet.
+        """
+        if self.intermediate_results is None:
+            raise ValueError(
+                "Intermediate results are not available. Run compute_metrics() first."
+            )
+        return self.intermediate_results
+
+    def save_results(self, target_dir: str | Path) -> None:
+        """Save evaluation results:
+        - Summary as a YAML file.
+        - Intermediate results as a CSV file.
+        Note: intermediate results are not saved in micro-avg mode since this mode
+        does not have intermediate results.
+        - Comparison matrix as a CSV file.
+        """
+
+        if (
+            self.summary is None
+            or self.intermediate_results is None
+            or self.comparison_matrix is None
+        ):
+            raise ValueError("Results are not available. Run compute_metrics() first.")
+
+        self._save_to_yaml(
+            df=self.summary,
+            target_dir=target_dir,
+            filename="summary_metrics.yaml",
+            key_column="metric",
+        )
+        if self.mode != "micro-avg":
+            self._save_to_csv(
+                df=self.intermediate_results,
+                target_dir=target_dir,
+                filename="intermediate_results.csv",
+            )
+        self._save_to_csv(
+            df=self.comparison_matrix,
+            target_dir=target_dir,
+            filename="comparison_matrix.csv",
+        )
 
     def _load(self, path: Path) -> RecordCollection[BaseModel]:
         if path.is_dir():
             return RecordCollection.create_from_dir(path, schema=self.schema)
         return RecordCollection.create_from_file(path, schema=self.schema)
+
+    def _save_to_csv(
+        self, df: pl.DataFrame, target_dir: str | Path, filename: str
+    ) -> None:
+        """Save a Polars Dataframe to a CSV file.
+
+        Args:
+            df: The Polars Dataframe to save.
+            target_dir: The directory where the CSV file will be saved.
+            filename: The name of the CSV file.
+        """
+        # csv writer does not support object dtype - convert Object columns to strings
+        df = self._convert_object_columns(df)
+
+        target_dir = Path(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        file_path = target_dir / filename
+        df.write_csv(file_path)
+
+    def _save_to_yaml(
+        self,
+        df: pl.DataFrame,
+        target_dir: str | Path,
+        filename: str,
+        key_column: str | None = None,
+    ) -> None:
+        """Save a Polars DataFrame to a YAML file.
+
+        Args:
+            df: The Polars DataFrame to save.
+            target_dir: The directory where the YAML file will be saved.
+            filename: The name of the YAML file.
+            key_column: The column to use as the top-level key in the YAML file.
+        """
+        # Convert Object columns to strings
+        df = self._convert_object_columns(df)
+
+        target_dir = Path(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        if key_column is not None:
+            if key_column not in df.columns:
+                raise ValueError(f"Column {key_column!r} not found in DataFrame.")
+
+            data = {
+                row[key_column]: {k: v for k, v in row.items() if k != key_column}
+                for row in df.iter_rows(named=True)
+            }
+        else:
+            data = df.to_dicts()
+
+        with (target_dir / filename).open("w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
+
+    def _convert_object_columns(self, df: pl.DataFrame) -> pl.DataFrame:
+        """Convert Object columns to strings."""
+
+        object_columns = [col for col, dtype in df.schema.items() if dtype == pl.Object]
+        for col in object_columns:
+            df = df.with_columns(
+                pl.Series(
+                    col,
+                    [
+                        str(value) if value is not None else None
+                        for value in df[col].to_list()
+                    ],
+                    dtype=pl.String,
+                )
+            )
+        return df

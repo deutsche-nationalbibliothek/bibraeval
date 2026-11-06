@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import polars as pl
 import pytest
@@ -37,6 +38,14 @@ PRED = {
     "A": {"title": "Titel", "year": "2014"},
     "B": {"title": "Other", "year": "2020"},
 }
+
+DF = pl.DataFrame(
+    {
+        "doc_id": ["doc1", "doc2"],
+        "title": ["Book A", "Book B"],
+        "score": [1.0, None],
+    }
+)
 
 
 def _write_dir(directory: Path, records: dict[str, dict]) -> Path:
@@ -176,3 +185,253 @@ def test_mismatched_doc_ids_raise_when_not_dropped(
 
     with pytest.raises(ValueError, match="mismatched doc_ids"):
         evaluator.compute_metrics()
+
+
+def test_get_comparison_matrix_raises_if_not_computed(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+
+    with pytest.raises(ValueError, match="Comparison matrix is not available"):
+        evaluator.get_comparison_matrix()
+
+
+def test_get_comparison_matrix_returns_correct_structure(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+    evaluator.compute_metrics()
+
+    comparison_matrix = evaluator.get_comparison_matrix()
+
+    assert comparison_matrix.height > 0
+    assert set(comparison_matrix.columns) == {
+        "doc_id",
+        "field_name",
+        "gt_present",
+        "pred_present",
+        "gt_value",
+        "pred_value",
+        "cell_agreement",
+        "weight",
+    }
+
+
+def test_get_intermediate_results_raises_if_not_computed(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+
+    with pytest.raises(ValueError, match="Intermediate results are not available"):
+        evaluator.get_intermediate_results()
+
+
+def test_get_intermediate_results_returns_correct_structure(
+    gt_dir: Path, pred_dir: Path
+) -> None:
+    evaluator = Evaluator(gt_dir, pred_dir, PublicationMetadata)
+    evaluator.compute_metrics()
+
+    intermediate_results = evaluator.get_intermediate_results()
+
+    assert intermediate_results.height > 0
+    assert set(intermediate_results.columns) == {
+        "field_name",
+        "support_prec",
+        "prec",
+        "support_rec",
+        "rec",
+        "weight",
+        "f1",
+    }
+
+
+@pytest.mark.parametrize("results_dir", [None, "/some/path"])
+def test_compute_metrics_saves_results(
+    gt_dir: Path, pred_dir: Path, results_dir: str | None
+) -> None:
+    evaluator = Evaluator(
+        gt_dir, pred_dir, PublicationMetadata, field_metric_config=CONFIG
+    )
+
+    with patch.object(evaluator, "save_results") as mock_save:
+        summary = evaluator.compute_metrics(results_dir)
+
+    assert isinstance(summary, pl.DataFrame)
+    assert {"metric", "mode", "value", "support"} <= set(summary.columns)
+
+    if results_dir is not None:
+        mock_save.assert_called_once_with(results_dir)
+    else:
+        mock_save.assert_not_called()
+
+
+def test_save_to_csv(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    target_dir = tmp_path / "nested" / "results"
+    filename = "test_results.yaml"
+    file_path = target_dir / filename
+
+    evaluator._save_to_csv(DF, target_dir, filename)
+    saved_df = pl.read_csv(file_path)
+
+    assert file_path.exists()
+    assert saved_df.equals(DF)
+
+
+def test_save_to_csv_converts_object_columns(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    df = pl.DataFrame(
+        {
+            "doc_id": ["doc1", "doc2"],
+            "value": pl.Series(
+                "value",
+                [{"title": "Book A"}, {"title": "Book B"}],
+                dtype=pl.Object,
+            ),
+        }
+    )
+
+    evaluator._save_to_csv(df, tmp_path, "results.csv")
+    saved_df = pl.read_csv(tmp_path / "results.csv")
+
+    assert saved_df.schema["value"] == pl.String
+    assert saved_df["value"].to_list() == [
+        "{'title': 'Book A'}",
+        "{'title': 'Book B'}",
+    ]
+
+
+def test_save_to_yaml(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    target_dir = tmp_path / "nested" / "results"
+    filename = "test_results.yaml"
+    file_path = target_dir / filename
+
+    evaluator._save_to_yaml(DF, target_dir, filename)
+
+    assert file_path.exists()
+    with file_path.open(encoding="utf-8") as f:
+        result = yaml.safe_load(f)
+    assert result == [
+        {"doc_id": "doc1", "title": "Book A", "score": 1.0},
+        {"doc_id": "doc2", "title": "Book B", "score": None},
+    ]
+
+
+def test_save_to_yaml_uses_key_column(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+    file_path = tmp_path / "keyed_results.yaml"
+
+    evaluator._save_to_yaml(DF, tmp_path, file_path.name, key_column="doc_id")
+
+    with file_path.open(encoding="utf-8") as f:
+        result = yaml.safe_load(f)
+    assert result == {
+        "doc1": {"title": "Book A", "score": 1.0},
+        "doc2": {"title": "Book B", "score": None},
+    }
+
+
+def test_save_to_yaml_raises_if_key_column_is_missing(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    with pytest.raises(
+        ValueError, match=r"Column 'missing_column' not found in DataFrame\."
+    ):
+        evaluator._save_to_yaml(
+            DF, tmp_path, "keyed_results.yaml", key_column="missing_column"
+        )
+
+
+@pytest.fixture
+def evaluator(tmp_path: Path):
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    evaluator.summary = pl.DataFrame(
+        {
+            "metric": ["f1", "prec", "rec"],
+            "mode": ["field-avg"] * 3,
+            "value": [0.9, 0.85, 0.95],
+            "support": [10, 10, 10],
+        }
+    )
+
+    evaluator.intermediate_results = pl.DataFrame(
+        {
+            "field_name": ["title", "author"],
+            "prec": [0.9, 0.8],
+            "rec": [0.95, 0.85],
+            "f1": [0.92, 0.82],
+        }
+    )
+
+    evaluator.comparison_matrix = pl.DataFrame(
+        {
+            "doc_id": ["doc1", "doc2"],
+            "field_name": ["title", "author"],
+            "cell_agreement": [1.0, 0.8],
+        }
+    )
+
+    return evaluator
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected_files"),
+    [
+        (
+            "field-avg",
+            {
+                "summary_metrics.yaml",
+                "intermediate_results.csv",
+                "comparison_matrix.csv",
+            },
+        ),
+        (
+            "doc-avg",
+            {
+                "summary_metrics.yaml",
+                "intermediate_results.csv",
+                "comparison_matrix.csv",
+            },
+        ),
+        ("micro-avg", {"summary_metrics.yaml", "comparison_matrix.csv"}),
+    ],
+)
+def test_save_results_by_mode(
+    evaluator, tmp_path: Path, mode: AggregationMode, expected_files: set[str]
+) -> None:
+    evaluator.mode = mode
+    evaluator.summary = evaluator.summary.with_columns(pl.lit(mode).alias("mode"))
+    evaluator.save_results(tmp_path)
+
+    assert {path.name for path in tmp_path.iterdir()} == expected_files
+
+    with (tmp_path / "summary_metrics.yaml").open(encoding="utf-8") as f:
+        assert yaml.safe_load(f) == {
+            "f1": {"mode": mode, "value": 0.9, "support": 10},
+            "prec": {"mode": mode, "value": 0.85, "support": 10},
+            "rec": {"mode": mode, "value": 0.95, "support": 10},
+        }
+
+    if mode != "micro-avg":
+        assert_frame_equal(
+            pl.read_csv(tmp_path / "intermediate_results.csv"),
+            evaluator.intermediate_results,
+        )
+
+    assert_frame_equal(
+        pl.read_csv(tmp_path / "comparison_matrix.csv"),
+        evaluator.comparison_matrix,
+    )
+
+
+def test_save_results_raises_if_results_not_available(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, PublicationMetadata)
+
+    with pytest.raises(ValueError, match="Results are not available"):
+        evaluator.save_results(tmp_path)
