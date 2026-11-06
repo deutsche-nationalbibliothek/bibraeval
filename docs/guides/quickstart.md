@@ -36,6 +36,19 @@ print("Comparison Matrix:")
 print(comparison_matrix)
 ```
 
+```text
+shape: (3, 4)
+┌────────┬───────────┬──────────┬─────────┐
+│ metric ┆ mode      ┆ value    ┆ support │
+│ ---    ┆ ---       ┆ ---      ┆ ---     │
+│ str    ┆ str       ┆ f64      ┆ f64     │
+╞════════╪═══════════╪══════════╪═════════╡
+│ f1     ┆ field-avg ┆ 0.431682 ┆ 43.8    │
+│ prec   ┆ field-avg ┆ 0.460207 ┆ 39.8    │
+│ rec    ┆ field-avg ┆ 0.411724 ┆ 43.0    │
+└────────┴───────────┴──────────┴─────────┘
+```
+
 The default metric is exact matching with uniform field weights. Configure
 fuzzy matching and weights with `field_metric_config`; choose `doc-avg`,
 `field-avg`, or `micro-avg` with `mode`. These modes have the following meaning:
@@ -44,7 +57,7 @@ fuzzy matching and weights with `field_metric_config`; choose `doc-avg`,
      all fields), then compute average across documents
 - `field-avg` field macro-average: compute average results per field (along all
      documents), then compute average across all fields
-- `micro` micro-average: direct pooling of field-to-field results in one score
+- `micro-avg` micro-average: direct pooling of field-to-field results in one score
 
 Summary: evaluator.compute_metrics() returns Polars DataFrame in long form, with 
 a row for each metric and columns `metric`, `mode`, `value`,and `support`. 
@@ -55,7 +68,7 @@ Here, `support` refers to the
 - exact number of documents that contributed to the document average (for mode
     `doc-avg`)
 - the number of (doc, field) tuples that contributed to the micro average (for
-    mode `micro`)
+    mode `micro-avg`)
 
 Intermediate results: evaluator.get_intermediate_results() returns Polars DataFrame,
 with a row for each field for `field-avg`, or a row for each document for `doc-avg`.

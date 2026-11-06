@@ -1,17 +1,20 @@
 # BIBRA-Eval
 
-
-![Status: Work in
-Progress](https://img.shields.io/badge/status-work--in--progress-orange.png)
+[![status](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![License](https://img.shields.io/badge/License-EUPL%201.2-blue.svg)](https://opensource.org/license/EUPL-1.2)
+[![Tests](https://github.com/deutsche-nationalbibliothek/bibraeval/actions/workflows/tests.yml/badge.svg)](https://github.com/deutsche-nationalbibliothek/bibraeval/actions/workflows/tests.yml)
+[![docs](https://github.com/deutsche-nationalbibliothek/bibraeval/actions/workflows/docs.yml/badge.svg)](https://deutsche-nationalbibliothek.github.io/bibraeval/index.html)
+<!-- [![PyPI Latest Release](https://img.shields.io/pypi/v/bibraeval.svg)](https://pypi.org/project/bibraeval/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/bibraeval.svg?label=PyPI%20downloads)](https://pypi.org/project/bibraeval/) -->
 
 Evaluating descriptive cataloguing records created with BIBRA.
 [BIBRA](https://github.com/NatLibFi/BIBRA) is an (L)LM-based assistance
 tool, to generate bibliographic metadata from a given PDF-Input.
 `BIBRA-Eval` provides tooling to make direct comparisons of
 LLM-generated BIBRA JSON-Records with gold-standard records coming from
-a different source (e.g. manual indexing). It validates records against a 
-Pydantic schema, scores configured fields, and summarizes precision, recall, 
-and F1 with document, field, or micro averaging. Its comparison matrix also 
+a different source (e.g. manual indexing). It validates records against a
+Pydantic schema, scores configured fields, and summarizes precision, recall,
+and F1 with document, field, or micro averaging. Its comparison matrix also
 supports stratified drill-downs.
 
 ## Installation
@@ -74,9 +77,9 @@ that list-alignment threshold.
 
 ## Documentation
 
-Start with the [documentation index](docs/index.md) for focused guides and the
-generated [API reference](docs/api/index.md). See the
-[architecture guide](docs/guides/architecture.md) for a complete class diagram
+Start with the [documentation start page](https://deutsche-nationalbibliothek.github.io/bibraeval/) for focused guides and the
+generated [API reference](https://deutsche-nationalbibliothek.github.io/bibraeval/api/index.html). See the
+[architecture guide](https://deutsche-nationalbibliothek.github.io/bibraeval/guides/architecture.html) for a complete class diagram
 for developers.
 To build the Sphinx site, install the `docs` dependency group and run
 `sphinx-build -W -b html docs docs/_build/html` from this directory. See

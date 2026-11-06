@@ -24,12 +24,44 @@ per_format = aggregator.compute_intermediate_results(["doc_id", "format"])
 summary = aggregator.summarise_results(per_format)
 ```
 
+```text
+shape: (48, 5)
+┌──────────┬────────┬─────────┬──────────┬─────────┐
+│ format   ┆ metric ┆ mode    ┆ value    ┆ support │
+│ ---      ┆ ---    ┆ ---     ┆ ---      ┆ ---     │
+│ str      ┆ str    ┆ str     ┆ f64      ┆ u32     │
+╞══════════╪════════╪═════════╪══════════╪═════════╡
+│ book     ┆ f1     ┆ doc-avg ┆ 0.256158 ┆ 1       │
+│ book     ┆ prec   ┆ doc-avg ┆ 0.298851 ┆ 1       │
+│ book     ┆ rec    ┆ doc-avg ┆ 0.224138 ┆ 1       │
+│ article  ┆ f1     ┆ doc-avg ┆ 0.348614 ┆ 1       │
+│ article  ┆ prec   ┆ doc-avg ┆ 0.313753 ┆ 1       │
+│ article  ┆ rec    ┆ doc-avg ┆ 0.392191 ┆ 1       │
+└──────────┴────────┴─────────┴──────────┴─────────┘
+```
+
 Grouping by `doc_id` and a stratum keeps per-document macro results separate
 within each stratum. For a stratified micro average, group only by the stratum:
 
 ```python
 per_format_micro = aggregator.compute_intermediate_results("format")
 format_summary = aggregator.summarise_results(per_format_micro)
+```
+
+```text
+shape: (48, 5)
+┌──────────┬────────┬───────────┬──────────┬─────────┐
+│ format   ┆ metric ┆ mode      ┆ value    ┆ support │
+│ ---      ┆ ---    ┆ ---       ┆ ---      ┆ ---     │
+│ str      ┆ str    ┆ str       ┆ f64      ┆ f64     │
+╞══════════╪════════╪═══════════╪══════════╪═════════╡
+│ book     ┆ f1     ┆ micro-avg ┆ 0.256158 ┆ 4.0     │
+│ book     ┆ prec   ┆ micro-avg ┆ 0.298851 ┆ 3.0     │
+│ book     ┆ rec    ┆ micro-avg ┆ 0.224138 ┆ 4.0     │
+│ article  ┆ f1     ┆ micro-avg ┆ 0.348614 ┆ 5.0     │
+│ article  ┆ prec   ┆ micro-avg ┆ 0.313753 ┆ 5.0     │
+│ article  ┆ rec    ┆ micro-avg ┆ 0.392191 ┆ 4.0     │
+└──────────┴────────┴───────────┴──────────┴─────────┘
 ```
 
 `IntermediateResults.strata` reports grouping columns other than `doc_id` and
