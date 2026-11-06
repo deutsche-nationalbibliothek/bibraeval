@@ -189,15 +189,7 @@ class Evaluator:
             filename="summary_metrics.yaml",
             key_column="metric",
         )
-        # Save intermediate results as YAML only if mode is "field-avg"
-        if self.mode == "field-avg":
-            self._save_to_yaml(
-                df=self.intermediate_results,
-                target_dir=target_dir,
-                filename="intermediate_results.yaml",
-                key_column="field_name",
-            )
-        elif self.mode == "doc-avg":
+        if self.mode != "micro-avg":
             self._save_to_csv(
                 df=self.intermediate_results,
                 target_dir=target_dir,
@@ -252,33 +244,19 @@ class Evaluator:
 
         target_dir = Path(target_dir)
         target_dir.mkdir(parents=True, exist_ok=True)
-        file_path = target_dir / filename
-        with file_path.open("w", encoding="utf-8") as f:
-            if key_column is not None:
-                transformed_data = self._transform_df_to_dict(df, key_column=key_column)
-                yaml.safe_dump(transformed_data, f, allow_unicode=True, sort_keys=False)
-            else:
-                yaml.safe_dump(df.to_dicts(), f, allow_unicode=True, sort_keys=False)
+        if key_column is not None:
+            if key_column not in df.columns:
+                raise ValueError(f"Column {key_column!r} not found in DataFrame.")
 
-    def _transform_df_to_dict(
-        self, df: pl.DataFrame, key_column: str | None = None
-    ) -> dict:
-        """
-        Transform a polars DataFrame to a nested dictionary using a column as key.
-        """
-        if df.is_empty():
-            return {}
+            data = {
+                row[key_column]: {k: v for k, v in row.items() if k != key_column}
+                for row in df.iter_rows(named=True)
+            }
+        else:
+            data = df.to_dicts()
 
-        # Determine which column to use as key
-        if key_column is None:
-            key_column = df.columns[0]  # Use first column
-
-        data = {}
-        for row in df.iter_rows(named=True):
-            key = row[key_column]
-            data[key] = {k: v for k, v in row.items() if k != key_column}
-
-        return data
+        with (target_dir / filename).open("w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
 
     def _convert_object_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Convert Object columns to strings."""

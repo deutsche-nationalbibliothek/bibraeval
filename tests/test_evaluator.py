@@ -336,6 +336,17 @@ def test_save_to_yaml_uses_key_column(tmp_path: Path) -> None:
     }
 
 
+def test_save_to_yaml_raises_if_key_column_is_missing(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+
+    with pytest.raises(
+        ValueError, match=r"Column 'missing_column' not found in DataFrame\."
+    ):
+        evaluator._save_to_yaml(
+            DF, tmp_path, "keyed_results.yaml", key_column="missing_column"
+        )
+
+
 @pytest.fixture
 def evaluator(tmp_path: Path):
     evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
@@ -376,7 +387,7 @@ def evaluator(tmp_path: Path):
             "field-avg",
             {
                 "summary_metrics.yaml",
-                "intermediate_results.yaml",
+                "intermediate_results.csv",
                 "comparison_matrix.csv",
             },
         ),
@@ -407,13 +418,7 @@ def test_save_results_by_mode(
             "rec": {"mode": mode, "value": 0.95, "support": 10},
         }
 
-    if mode == "field-avg":
-        with (tmp_path / "intermediate_results.yaml").open(encoding="utf-8") as f:
-            assert yaml.safe_load(f) == {
-                "title": {"prec": 0.9, "rec": 0.95, "f1": 0.92},
-                "author": {"prec": 0.8, "rec": 0.85, "f1": 0.82},
-            }
-    elif mode == "doc-avg":
+    if mode != "micro-avg":
         assert_frame_equal(
             pl.read_csv(tmp_path / "intermediate_results.csv"),
             evaluator.intermediate_results,
