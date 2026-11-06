@@ -171,8 +171,9 @@ class Evaluator:
     def save_results(self, target_dir: str | Path) -> None:
         """Save evaluation results:
         - Summary as a YAML file.
-        - Intermediate results as a YAML file for mode "field-avg" and, when
-          mode is "doc-avg", also as a CSV file.
+        - Intermediate results as a CSV file.
+        Note: intermediate results are not saved in micro-avg mode since this mode
+        does not have intermediate results.
         - Comparison matrix as a CSV file.
         """
 
