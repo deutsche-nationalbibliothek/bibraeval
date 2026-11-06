@@ -322,6 +322,20 @@ def test_save_to_yaml(tmp_path: Path) -> None:
     ]
 
 
+def test_save_to_yaml_uses_key_column(tmp_path: Path) -> None:
+    evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
+    file_path = tmp_path / "keyed_results.yaml"
+
+    evaluator._save_to_yaml(DF, tmp_path, file_path.name, key_column="doc_id")
+
+    with file_path.open(encoding="utf-8") as f:
+        result = yaml.safe_load(f)
+    assert result == {
+        "doc1": {"title": "Book A", "score": 1.0},
+        "doc2": {"title": "Book B", "score": None},
+    }
+
+
 @pytest.fixture
 def evaluator(tmp_path: Path):
     evaluator = Evaluator(tmp_path, tmp_path, BaseModel)
@@ -355,78 +369,60 @@ def evaluator(tmp_path: Path):
     return evaluator
 
 
-def test_save_results_field_avg(evaluator, tmp_path: Path) -> None:
-    evaluator.mode = "field-avg"
+@pytest.mark.parametrize(
+    ("mode", "expected_files"),
+    [
+        (
+            "field-avg",
+            {
+                "summary_metrics.yaml",
+                "intermediate_results.yaml",
+                "comparison_matrix.csv",
+            },
+        ),
+        (
+            "doc-avg",
+            {
+                "summary_metrics.yaml",
+                "intermediate_results.csv",
+                "comparison_matrix.csv",
+            },
+        ),
+        ("micro-avg", {"summary_metrics.yaml", "comparison_matrix.csv"}),
+    ],
+)
+def test_save_results_by_mode(
+    evaluator, tmp_path: Path, mode: AggregationMode, expected_files: set[str]
+) -> None:
+    evaluator.mode = mode
+    evaluator.summary = evaluator.summary.with_columns(pl.lit(mode).alias("mode"))
     evaluator.save_results(tmp_path)
 
-    expected_files = {
-        "summary_metrics.yaml": evaluator.summary,
-        "intermediate_results.yaml": evaluator.intermediate_results,
-        "intermediate_results.csv": evaluator.intermediate_results,
-        "comparison_matrix.csv": evaluator.comparison_matrix,
-    }
-    n_files = len(list(tmp_path.iterdir()))
+    assert {path.name for path in tmp_path.iterdir()} == expected_files
 
-    for filename, expected_df in expected_files.items():
-        file_path = tmp_path / filename
-        if filename.endswith(".yaml"):
-            with file_path.open(encoding="utf-8") as f:
-                saved_df = pl.DataFrame(yaml.safe_load(f))
-        else:
-            saved_df = pl.read_csv(file_path)
+    with (tmp_path / "summary_metrics.yaml").open(encoding="utf-8") as f:
+        assert yaml.safe_load(f) == {
+            "f1": {"mode": mode, "value": 0.9, "support": 10},
+            "prec": {"mode": mode, "value": 0.85, "support": 10},
+            "rec": {"mode": mode, "value": 0.95, "support": 10},
+        }
 
-        assert file_path.exists()
-        assert saved_df.equals(expected_df)
-        assert n_files == len(expected_files)
+    if mode == "field-avg":
+        with (tmp_path / "intermediate_results.yaml").open(encoding="utf-8") as f:
+            assert yaml.safe_load(f) == {
+                "title": {"prec": 0.9, "rec": 0.95, "f1": 0.92},
+                "author": {"prec": 0.8, "rec": 0.85, "f1": 0.82},
+            }
+    elif mode == "doc-avg":
+        assert_frame_equal(
+            pl.read_csv(tmp_path / "intermediate_results.csv"),
+            evaluator.intermediate_results,
+        )
 
-
-def test_save_results_doc_avg(evaluator, tmp_path: Path) -> None:
-    evaluator.mode = "doc-avg"
-    evaluator.save_results(tmp_path)
-
-    expected_files = {
-        "summary_metrics.yaml": evaluator.summary,
-        "intermediate_results.yaml": evaluator.intermediate_results,
-        "intermediate_results.csv": evaluator.intermediate_results,
-        "comparison_matrix.csv": evaluator.comparison_matrix,
-    }
-    n_files = len(list(tmp_path.iterdir()))
-
-    for filename, expected_df in expected_files.items():
-        file_path = tmp_path / filename
-        if filename.endswith(".yaml"):
-            with file_path.open(encoding="utf-8") as f:
-                saved_df = pl.DataFrame(yaml.safe_load(f))
-        else:
-            saved_df = pl.read_csv(file_path)
-
-        assert file_path.exists()
-        assert saved_df.equals(expected_df)
-        assert n_files == len(expected_files)
-
-
-def test_save_results_micro_avg(evaluator, tmp_path: Path) -> None:
-    evaluator.mode = "micro-avg"
-    evaluator.save_results(tmp_path)
-
-    expected_files = {
-        "summary_metrics.yaml": evaluator.summary,
-        "intermediate_results.yaml": evaluator.intermediate_results,
-        "comparison_matrix.csv": evaluator.comparison_matrix,
-    }
-    n_files = len(list(tmp_path.iterdir()))
-
-    for filename, expected_df in expected_files.items():
-        file_path = tmp_path / filename
-        if filename.endswith(".yaml"):
-            with file_path.open(encoding="utf-8") as f:
-                saved_df = pl.DataFrame(yaml.safe_load(f))
-        else:
-            saved_df = pl.read_csv(file_path)
-
-        assert file_path.exists()
-        assert saved_df.equals(expected_df)
-        assert n_files == len(expected_files)
+    assert_frame_equal(
+        pl.read_csv(tmp_path / "comparison_matrix.csv"),
+        evaluator.comparison_matrix,
+    )
 
 
 def test_save_results_raises_if_results_not_available(tmp_path: Path) -> None:

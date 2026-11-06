@@ -171,8 +171,8 @@ class Evaluator:
     def save_results(self, target_dir: str | Path) -> None:
         """Save evaluation results:
         - Summary as a YAML file.
-        - Intermediate results as a YAML file and, when mode != "micro-avg",
-        also as a CSV file.
+        - Intermediate results as a YAML file for mode "field-avg" and, when
+          mode is "doc-avg", also as a CSV file.
         - Comparison matrix as a CSV file.
         """
 
@@ -187,13 +187,17 @@ class Evaluator:
             df=self.summary,
             target_dir=target_dir,
             filename="summary_metrics.yaml",
+            key_column="metric",
         )
-        self._save_to_yaml(
-            df=self.intermediate_results,
-            target_dir=target_dir,
-            filename="intermediate_results.yaml",
-        )
-        if self.mode != "micro-avg":
+        # Save intermediate results as YAML only if mode is "field-avg"
+        if self.mode == "field-avg":
+            self._save_to_yaml(
+                df=self.intermediate_results,
+                target_dir=target_dir,
+                filename="intermediate_results.yaml",
+                key_column="field_name",
+            )
+        elif self.mode == "doc-avg":
             self._save_to_csv(
                 df=self.intermediate_results,
                 target_dir=target_dir,
@@ -229,7 +233,11 @@ class Evaluator:
         df.write_csv(file_path)
 
     def _save_to_yaml(
-        self, df: pl.DataFrame, target_dir: str | Path, filename: str
+        self,
+        df: pl.DataFrame,
+        target_dir: str | Path,
+        filename: str,
+        key_column: str | None = None,
     ) -> None:
         """Save a Polars DataFrame to a YAML file.
 
@@ -237,6 +245,7 @@ class Evaluator:
             df: The Polars DataFrame to save.
             target_dir: The directory where the YAML file will be saved.
             filename: The name of the YAML file.
+            key_column: The column to use as the top-level key in the YAML file.
         """
         # Convert Object columns to strings
         df = self._convert_object_columns(df)
@@ -245,7 +254,31 @@ class Evaluator:
         target_dir.mkdir(parents=True, exist_ok=True)
         file_path = target_dir / filename
         with file_path.open("w", encoding="utf-8") as f:
-            yaml.safe_dump(df.to_dicts(), f, allow_unicode=True, sort_keys=False)
+            if key_column is not None:
+                transformed_data = self._transform_df_to_dict(df, key_column=key_column)
+                yaml.safe_dump(transformed_data, f, allow_unicode=True, sort_keys=False)
+            else:
+                yaml.safe_dump(df.to_dicts(), f, allow_unicode=True, sort_keys=False)
+
+    def _transform_df_to_dict(
+        self, df: pl.DataFrame, key_column: str | None = None
+    ) -> dict:
+        """
+        Transform a polars DataFrame to a nested dictionary using a column as key.
+        """
+        if df.is_empty():
+            return {}
+
+        # Determine which column to use as key
+        if key_column is None:
+            key_column = df.columns[0]  # Use first column
+
+        data = {}
+        for row in df.iter_rows(named=True):
+            key = row[key_column]
+            data[key] = {k: v for k, v in row.items() if k != key_column}
+
+        return data
 
     def _convert_object_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Convert Object columns to strings."""
