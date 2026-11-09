@@ -1,13 +1,15 @@
 # Configuring metrics
 
-BIBRA-Eval requires records that follow a specific JSON-scheme. Built on top
-of the record scheme is an evaluation scheme, that specifies the fields
-that should be part of the comparison and the metrics that apply to each field.
+BIBRA-Eval uses two separate configurations:
 
-Pass a flat field mapping, a `FieldMetricMapping`, or a YAML path as
-`field_metric_config`. When a mapping is supplied, fields not listed in it are
-not scored. Without a mapping, all fields from the validated metadata are
-scored with the default `Exact` comparison metric and a uniform weight of `1.0`.
+- Metadata schema: A Pydantic `BaseModel` defining the structure and data types of the metadata records.
+
+- Metric configuration: A `FieldMetricMapping` defining which metadata fields are evaluated and which comparison metric, matching threshold, list comparison strategy, and weight are applied to each field.
+
+Pass a flat field mapping, a `FieldMetricMapping`, or a YAML path as `field_metric_config`. 
+
+When a metric configuration is supplied, fields not listed in it are not scored. 
+Without a metric configuration, all fields from the validated metadata are scored with the default `Exact` comparison metric and a uniform weight of `1.0`.
 
 ```python
 field_metrics = {
@@ -33,34 +35,33 @@ evaluator = Evaluator(
 )
 ```
 
-Metric names are case-insensitive `exact`/`Exact` or
-`levenshtein`/`Levenshtein`. Weights must be positive. Levenshtein requires a
-`match_threshold` from 0 through 1; Exact does not accept one.
+Metric names are case-insensitive `exact`/`Exact` or `levenshtein`/`Levenshtein`. 
+Weights must be positive. 
+Levenshtein requires a `match_threshold` from 0 through 1; Exact does not accept one.
 
 ## Scalar values
 
-`Exact` returns 1 for equal values and 0 otherwise. `Levenshtein` returns the
-normalized Levenshtein similarity ratio. The threshold does not turn a scalar
-score into a binary decision.
+`Exact` returns 1 for equal values and 0 otherwise. 
+`Levenshtein` returns the normalized Levenshtein similarity ratio. The threshold does not turn a scalar score into a binary decision.
 
 ## List values
 
-For lists, the metric first aligns entries one-to-one. `Exact` aligns equal
-entries; `Levenshtein` prioritizes exact matches and then uses a global
-similarity-based assignment, leaving pairs below `match_threshold` unmatched.
-The alignment similarity uses
-[difflibs `SequenceMatcher`](https://docs.python.org/3/library/difflib.html).
-Once list alignment is established, agreement for aligned pairs is measured
-with the configured scalar metric (Levenshtein ratio).
+For lists, the metric first aligns entries one-to-one. 
+- `Exact` aligns equal entries; 
+- `Levenshtein` prioritizes exact matches and then uses a global similarity-based assignment, leaving pairs below `match_threshold` unmatched.
+- The alignment similarity uses [difflibs `SequenceMatcher`](https://docs.python.org/3/library/difflib.html).
 
-`all-of` computes a precision/recall/F1-style score across matched and
-unmatched entries, so missing or extra entries affect the result. `any-of`
-returns the highest scalar agreement among aligned pairs and is useful when one
-matching item is sufficient. Empty or entirely unmatched lists score 0.
+Once list alignment is established, agreement for aligned pairs is measured with the configured scalar metric (Levenshtein ratio).
+
+- `all-of` computes a precision/recall/F1-style score across matched and unmatched entries, so missing or extra entries affect the result. 
+- `any-of` returns the highest scalar agreement among aligned pairs and is useful when one
+matching item is sufficient. 
+
+Empty or entirely unmatched lists score 0.
 
 ## YAML configuration
 
-The mapping may be written flat or under a `fields` key:
+The metric configuration may be written flat or under a `fields` key:
 
 ```yaml
 fields:
@@ -96,7 +97,7 @@ class PublicationMetadata(BaseModel):
     p_isbn: list[str] = Field(default_factory=list, alias="p-isbn")
 
 
-FieldMetricMapping = {
+field_metric_config = {
     "title": {"metric": "Levenshtein", "match_threshold": 0.7, "weight": 2.0},
     "year": {"metric": "Exact", "weight": 1.0},
     "authors": {
@@ -163,7 +164,7 @@ predictions.add_payload(
 comp = Comparator(
     ground_truth,
     predictions,
-    metric_schema=FieldMetricMapping,
+    metric_schema=field_metric_config,
     drop_mismatched_doc_ids=True,
 )
 
