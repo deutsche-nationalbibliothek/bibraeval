@@ -90,8 +90,8 @@ class Evaluator:
             * ``mode`` containing the aggregation mode,
             * ``value`` containing the aggregated metric value,
             * ``support`` containing the number or weighted average of observations
-            contributing to the metric. Its interpretation depends on the aggregation
-            mode and metric.
+              contributing to the metric. Its interpretation depends on the aggregation
+              mode and metric.
 
         Notes:
             Each call starts a new evaluation and clears results from previous runs.
