@@ -99,7 +99,7 @@ The default metric is exact matching with uniform field weights. Configure
 fuzzy matching and weights with `field_metric_config`; choose `doc-avg`,
 `field-avg`, or `micro-avg` with `mode`. These modes have the following meaning:
 
-- `doc-avg` document macro-average: compute average result per doc first (along
+- `doc-avg` document macro-average: compute average result per document first (along
      all fields), then compute average across documents
 - `field-avg` field macro-average: compute average results per field (along all
      documents), then compute average across all fields
