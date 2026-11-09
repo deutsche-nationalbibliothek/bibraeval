@@ -13,7 +13,7 @@ from bibraeval import Evaluator
 class PublicationMetadata(BaseModel):
     title: str | None = None
     year: str | None = None
-    authors: list[str] = []
+    authors: list[str] = Field(default_factory=list)
 
 
 evaluator = Evaluator(
@@ -59,13 +59,13 @@ fuzzy matching and weights with `field_metric_config`; choose `doc-avg`,
      documents), then compute average across all fields
 - `micro-avg` micro-average: direct pooling of field-to-field results in one score
 
-Summary: evaluator.compute_metrics() returns Polars DataFrame in long form, with 
-a row for each metric and columns `metric`, `mode`, `value`,and `support`. 
-Here, `support` refers to the
+Summary: evaluator.compute_metrics() returns a Polars DataFrame in long format, with 
+one row for each metric, and columns `metric`, `mode`, `value`, and `support`. 
+Here, `support` refers to:
 
-- average number of documents that contributed to the metric per field (for
+- the average number of documents that contributed to the metric per field (for
     mode `field-avg`)
-- exact number of documents that contributed to the document average (for mode
+- the exact number of documents that contributed to the document average (for mode
     `doc-avg`)
 - the number of (doc, field) tuples that contributed to the micro average (for
     mode `micro-avg`)
