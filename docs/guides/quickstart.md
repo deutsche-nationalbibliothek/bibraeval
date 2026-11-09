@@ -37,6 +37,7 @@ print(comparison_matrix)
 ```
 
 ```text
+Summary Metrics:
 shape: (3, 4)
 ┌────────┬───────────┬──────────┬─────────┐
 │ metric ┆ mode      ┆ value    ┆ support │
@@ -47,6 +48,51 @@ shape: (3, 4)
 │ prec   ┆ field-avg ┆ 0.460207 ┆ 39.8    │
 │ rec    ┆ field-avg ┆ 0.411724 ┆ 43.0    │
 └────────┴───────────┴──────────┴─────────┘
+```
+```text
+Intermediate Results:
+shape: (5, 7)
+┌────────────┬──────────────┬──────────┬─────────────┬──────────┬────────┬──────────┐
+│ field_name ┆ support_prec ┆ prec     ┆ support_rec ┆ rec      ┆ weight ┆ f1       │
+│ ---        ┆ ---          ┆ ---      ┆ ---         ┆ ---      ┆ ---    ┆ ---      │
+│ str        ┆ u32          ┆ f64      ┆ u32         ┆ f64      ┆ f64    ┆ f64      │
+╞════════════╪══════════════╪══════════╪═════════════╪══════════╪════════╪══════════╡
+│ alt_title  ┆ 29           ┆ 0.214891 ┆ 27          ┆ 0.230809 ┆ 1.0    ┆ 0.222566 │
+│ creator    ┆ 46           ┆ 0.337738 ┆ 44          ┆ 0.353089 ┆ 1.0    ┆ 0.345243 │
+│ publisher  ┆ 46           ┆ 0.471997 ┆ 48          ┆ 0.452331 ┆ 1.0    ┆ 0.461955 │
+│ title      ┆ 45           ┆ 0.579438 ┆ 48          ┆ 0.543224 ┆ 1.0    ┆ 0.560747 │
+│ year       ┆ 33           ┆ 0.69697  ┆ 48          ┆ 0.479167 ┆ 1.0    ┆ 0.567901 │
+└────────────┴──────────────┴──────────┴─────────────┴──────────┴────────┴──────────┘
+```
+```text
+Comparison Matrix:
+shape: (10, 8)
+┌────────┬────────────┬────────────┬─────────────┬─────────────┬─────────────┬────────────┬────────┐
+│ doc_id ┆ field_name ┆ gt_present ┆ pred_presen ┆ gt_value    ┆ pred_value  ┆ cell_agree ┆ weight │
+│ ---    ┆ ---        ┆ ---        ┆ t           ┆ ---         ┆ ---         ┆ ment       ┆ ---    │
+│ str    ┆ str        ┆ bool       ┆ ---         ┆ object      ┆ object      ┆ ---        ┆ f64    │
+│        ┆            ┆            ┆ bool        ┆             ┆             ┆ f64        ┆        │
+╞════════╪════════════╪════════════╪═════════════╪═════════════╪═════════════╪════════════╪════════╡
+│ 007    ┆ authors    ┆ true       ┆ true        ┆ ['Musterper ┆ ['Musterper ┆ 0.421053   ┆ 1.5    │
+│        ┆            ┆            ┆             ┆ son, Maxi', ┆ son',       ┆            ┆        │
+│        ┆            ┆            ┆             ┆ 'Doe, J…    ┆ 'Doe']      ┆            ┆        │
+│ 007    ┆ language   ┆ true       ┆ true        ┆ ['ger',     ┆ ['german',  ┆ 0.909091   ┆ 1.0    │
+│        ┆            ┆            ┆             ┆ 'eng']      ┆ 'eng']      ┆            ┆        │
+│ 007    ┆ p-isbn     ┆ false      ┆ true        ┆ []          ┆ ['978-3-865 ┆ 0.0        ┆ 1.0    │
+│        ┆            ┆            ┆             ┆             ┆ 39-327-2']  ┆            ┆        │
+│ 007    ┆ title      ┆ true       ┆ true        ┆ Struggles   ┆ Struggles   ┆ 0.823529   ┆ 2.0    │
+│        ┆            ┆            ┆             ┆ of modern   ┆ of modern   ┆            ┆        │
+│        ┆            ┆            ┆             ┆ library sy… ┆ library sy… ┆            ┆        │
+│ 007    ┆ year       ┆ true       ┆ true        ┆ 1915        ┆ 2026        ┆ 0.0        ┆ 1.0    │
+│ 123    ┆ authors    ┆ true       ┆ true        ┆ ['Librarian ┆ ['Librarian ┆ 0.916667   ┆ 1.5    │
+│        ┆            ┆            ┆             ┆ , The']     ┆ , A']       ┆            ┆        │
+│ 123    ┆ language   ┆ true       ┆ true        ┆ ['eng']     ┆ ['eng']     ┆ 1.0        ┆ 1.0    │
+│ 123    ┆ p-isbn     ┆ false      ┆ false       ┆ []          ┆ []          ┆ 0.0        ┆ 1.0    │
+│ 123    ┆ title      ┆ true       ┆ true        ┆ Epic work   ┆ _Epic work  ┆ 0.966667   ┆ 2.0    │
+│        ┆            ┆            ┆             ┆ on subject  ┆ on subject  ┆            ┆        │
+│        ┆            ┆            ┆             ┆ indexing    ┆ indexing…   ┆            ┆        │
+│ 123    ┆ year       ┆ false      ┆ false       ┆ null        ┆ null        ┆ 1.0        ┆ 1.0    │
+└────────┴────────────┴────────────┴─────────────┴─────────────┴─────────────┴────────────┴────────┘
 ```
 
 The default metric is exact matching with uniform field weights. Configure
