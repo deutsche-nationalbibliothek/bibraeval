@@ -3,8 +3,8 @@
 ## Metadata schema
 
 Provide a {Pydantic `BaseModel`](https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/)
-describing the fields to validate. Pydantic's configured
-validation and extra-field behaviour applies.
+describing the fields to validate. 
+Pydantic's configured validation and extra-field behaviour applies.
 
 ```python
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,8 +19,8 @@ class PublicationMetadata(BaseModel):
     p_isbn: list[str] = Field(default_factory=list, alias="p-isbn")
 ```
 
-**Note**: One particular instance of such a pydantic BaseModel is BIBRA's 
-internal metadatascheme that you can import from BIBRA itself:
+**Note**: One particular instance of such a Pydantic BaseModel is BIBRA's 
+internal metadata model that you can import from BIBRA itself:
 
 ```python
 from bibra.types import PublicationMetadata
@@ -59,7 +59,7 @@ Use one JSON object per line, including a non-empty string `"doc_id"` and the
 
 Duplicate IDs replace earlier records in the same collection, so keep IDs
 unique. Invalid JSON, a non-object record, a missing JSONL `doc_id`, or schema
-validation errors int the "record" part stop ingestion.
+validation errors in the "record" part stop ingestion.
 
 ## Matching IDs
 

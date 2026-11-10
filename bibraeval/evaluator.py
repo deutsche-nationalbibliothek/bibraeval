@@ -89,7 +89,9 @@ class Evaluator:
             * ``metric`` containing the metric name,
             * ``mode`` containing the aggregation mode,
             * ``value`` containing the aggregated metric value,
-            * ``support`` containing the number of records used to compute the metric.
+            * ``support`` containing the number or weighted average of observations
+              contributing to the metric. Its interpretation depends on the aggregation
+              mode and metric.
 
         Notes:
             Each call starts a new evaluation and clears results from previous runs.
@@ -169,12 +171,12 @@ class Evaluator:
         return self.intermediate_results
 
     def save_results(self, target_dir: str | Path) -> None:
-        """Save evaluation results:
-        - Summary as a YAML file.
-        - Intermediate results as a CSV file.
+        """Save evaluation results in the given target directory:
+        - Summary as a YAML file under `summary_metrics.yaml`.
+        - Intermediate results as a CSV file under `intermediate_results.csv`.
         Note: intermediate results are not saved in micro-avg mode since this mode
         does not have intermediate results.
-        - Comparison matrix as a CSV file.
+        - Comparison matrix as a CSV file under `comparison_matrix.csv`.
         """
 
         if (

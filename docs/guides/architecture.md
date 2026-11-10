@@ -33,7 +33,7 @@ classDiagram
         +RecordCollection ground_truth
         +RecordCollection predictions
         +bool drop_mismatched_doc_ids
-        +FieldMetricMapping metric_schema
+        +FieldMetricMapping field_metric_config
         +DataFrame comparison_matrix
         +compute_cell_agreement(comparison_matrix, metric)
         -_check_doc_id_match()
@@ -55,7 +55,7 @@ classDiagram
         +Path pred_path
         +type schema
         +AggregationMode mode
-        +field_metric_schema field_metric_config
+        +FieldMetricMapping field_metric_config
         +bool drop_mismatched_doc_ids
         +compute_metrics() DataFrame
         -_load(path) RecordCollection

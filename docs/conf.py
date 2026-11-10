@@ -28,3 +28,6 @@ autodoc_typehints = "description"
 autodoc_typehints_format = "short"
 
 html_theme = "alabaster"
+
+# Enable zooming and panning
+mermaid_d3_zoom = True

@@ -15,6 +15,37 @@ predictions = RecordCollection.create_from_file(
 comparator = Comparator(ground_truth, predictions, metric_schema=field_metrics)
 matrix = comparator.comparison_matrix
 scored_cells = comparator.compute_cell_agreement()
+print(scored_cells.head())
+```
+
+```text
+shape: (10, 8)
+┌────────┬────────────┬────────────┬─────────────┬─────────────┬─────────────┬────────────┬────────┐
+│ doc_id ┆ field_name ┆ gt_present ┆ pred_presen ┆ gt_value    ┆ pred_value  ┆ cell_agree ┆ weight │
+│ ---    ┆ ---        ┆ ---        ┆ t           ┆ ---         ┆ ---         ┆ ment       ┆ ---    │
+│ str    ┆ str        ┆ bool       ┆ ---         ┆ object      ┆ object      ┆ ---        ┆ f64    │
+│        ┆            ┆            ┆ bool        ┆             ┆             ┆ f64        ┆        │
+╞════════╪════════════╪════════════╪═════════════╪═════════════╪═════════════╪════════════╪════════╡
+│ 007    ┆ authors    ┆ true       ┆ true        ┆ ['Musterper ┆ ['Musterper ┆ 0.421053   ┆ 1.5    │
+│        ┆            ┆            ┆             ┆ son, Maxi', ┆ son',       ┆            ┆        │
+│        ┆            ┆            ┆             ┆ 'Doe, J…    ┆ 'Doe']      ┆            ┆        │
+│ 007    ┆ language   ┆ true       ┆ true        ┆ ['ger',     ┆ ['german',  ┆ 0.909091   ┆ 1.0    │
+│        ┆            ┆            ┆             ┆ 'eng']      ┆ 'eng']      ┆            ┆        │
+│ 007    ┆ p-isbn     ┆ false      ┆ true        ┆ []          ┆ ['978-3-865 ┆ 0.0        ┆ 1.0    │
+│        ┆            ┆            ┆             ┆             ┆ 39-327-2']  ┆            ┆        │
+│ 007    ┆ title      ┆ true       ┆ true        ┆ Struggles   ┆ Struggles   ┆ 0.823529   ┆ 2.0    │
+│        ┆            ┆            ┆             ┆ of modern   ┆ of modern   ┆            ┆        │
+│        ┆            ┆            ┆             ┆ library sy… ┆ library sy… ┆            ┆        │
+│ 007    ┆ year       ┆ true       ┆ true        ┆ 1915        ┆ 2026        ┆ 0.0        ┆ 1.0    │
+│ 123    ┆ authors    ┆ true       ┆ true        ┆ ['Librarian ┆ ['Librarian ┆ 0.916667   ┆ 1.5    │
+│        ┆            ┆            ┆             ┆ , The']     ┆ , A']       ┆            ┆        │
+│ 123    ┆ language   ┆ true       ┆ true        ┆ ['eng']     ┆ ['eng']     ┆ 1.0        ┆ 1.0    │
+│ 123    ┆ p-isbn     ┆ false      ┆ false       ┆ []          ┆ []          ┆ 0.0        ┆ 1.0    │
+│ 123    ┆ title      ┆ true       ┆ true        ┆ Epic work   ┆ _Epic work  ┆ 0.966667   ┆ 2.0    │
+│        ┆            ┆            ┆             ┆ on subject  ┆ on subject  ┆            ┆        │
+│        ┆            ┆            ┆             ┆ indexing    ┆ indexing…   ┆            ┆        │
+│ 123    ┆ year       ┆ false      ┆ false       ┆ null        ┆ null        ┆ 1.0        ┆ 1.0    │
+└────────┴────────────┴────────────┴─────────────┴─────────────┴─────────────┴────────────┴────────┘
 ```
 
 Presence is separate from agreement. `None`, an empty string, and an empty
@@ -26,14 +57,7 @@ nor recall has an observation.
 
 ## Aggregation modes
 
-Create an `Aggregator` from the comparator, then compute intermediate results
-and summarize them:
-
-```python
-aggregator = Aggregator(comparator)
-intermediate = aggregator.compute_intermediate_results("field_name")
-summary = aggregator.summarise_results(intermediate)
-```
+Bibra-Eval supports three aggregation modes:
 
 - `doc-avg`: compute weighted field precision and recall within each document,
   derive document F1, then average document results.
@@ -42,115 +66,59 @@ summary = aggregator.summarise_results(intermediate)
 - `micro-avg`: pool cell-level precision and recall before deriving F1.
 
 `Evaluator` uses `field-avg` by default. Its `mode` accepts exactly
-`doc-avg`, `field-avg`, or `micro-avg`. For the lower-level `Aggregator`, use
-`group_by="doc_id"` for document averaging, `group_by="field_name"` for field
-averaging, and `group_by=None` for an overall micro average.
+`doc-avg`, `field-avg`, or `micro-avg`. 
 
 Summary rows contain `metric`, `mode`, `value`, and `support`, plus any strata
 columns. Support describes the observations contributing to a result; it can
 be fractional for weighted field summaries.
 
-## Example
+To understand how aggregation works, you can also manually call the steps
+that the `Evaluator` class wraps internally:
 
-BIBRA-Eval allows specification of custom Metadata Schemas and a custom schema
-to define metrics per field. List-Type fields are matched on a fuzzy 
-matching principle, that can be adjusted with a custom `match_threshold`. 
-Lists can be compared in two modes: "all-of" counts all values in ground_truth
-and predictions and computes an f1-score between both.
-"any-of" only return the best match. 
-E.g. if language is a field that can have multiple values, "any-of" comparison 
-would only require for one of the values to be found, whereas "all-of" 
-requires all values to be found.
+Create an `Aggregator` from the comparator, then compute intermediate results
+and summarize them. For the lower-level `Aggregator`, use
+`group_by="doc_id"` for document averaging, `group_by="field_name"` for field
+averaging, and `group_by=None` for an overall micro average.
 
 ```python
-from pydantic import BaseModel, ConfigDict, Field
-from bibraeval.comparator import Comparator
-
-
-class PublicationMetadata(BaseModel):
-    """Response model for publication metadata extraction."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    language: list[str] = Field(default_factory=list)
-    title: str | None = None
-    year: str | None = None
-    authors: list[str] = Field(default_factory=list)
-    p_isbn: list[str] = Field(default_factory=list, alias="p-isbn")
-
-
-FieldMetricMapping = {
-    "title": {"metric": "Levenshtein", "match_threshold": 0.7, "weight": 2.0},
-    "year": {"metric": "Exact", "weight": 1.0},
-    "authors": {
-        "metric": "Levenshtein",
-        "match_threshold": 0.7,
-        "weight": 1.5,
-        "list_comparison": "all-of",
-    },
-    "p-isbn": {"metric": "Exact", "weight": 1.0},
-    "language": {
-        "metric": "Levenshtein",
-        "match_threshold": 0.6,
-        "weight": 1.0,
-        "list_comparison": "all-of",
-    },
-}
-
-ground_truth = RecordCollection[PublicationMetadata]()
-ground_truth.add_payload(
-    doc_id="123",
-    payload={
-        "title": "Epic work on subject indexing",
-        "authors": ["Librarian, The"],
-        "language": ["eng"],
-    },
-    schema=PublicationMetadata,
-)
-
-ground_truth.add_payload(
-    doc_id="007",
-    payload={
-        "title": "Struggles of modern library systems - A Collection",
-        "authors": ["Musterperson, Maxi", "Doe, John"],
-        "year": "1915",
-        "language": ["ger", "eng"],
-    },
-    schema=PublicationMetadata,
-)
-
-predictions = RecordCollection[PublicationMetadata]()
-predictions.add_payload(
-    doc_id="123",
-    payload={
-        "title": "_Epic work on subject indexing_",
-        "authors": ["Librarian, A"],
-        "language": ["eng"],
-    },
-    schema=PublicationMetadata,
-)
-
-predictions.add_payload(
-    doc_id="007",
-    payload={
-        "title": "Struggles of modern library systems",
-        "year": "2026",
-        "authors": ["Musterperson", "Doe"],
-        "language": ["german", "eng"],
-        "p-isbn": ["978-3-86539-327-2"],
-    },
-    schema=PublicationMetadata,
-)
-
-
-comp = Comparator(
-    ground_truth,
-    predictions,
-    metric_schema=FieldMetricMapping,
-    drop_mismatched_doc_ids=True,
-)
-
-comp.comparison_matrix
-
-comp.compute_cell_agreement()
+# compute intermediate results
+aggregator = Aggregator(comparator)
+intermediate = aggregator.compute_intermediate_results(group_by="field_name")
+intermediate.data
 ```
+
+```text
+shape: (5, 7)
+┌────────────┬──────────────┬──────────┬─────────────┬──────────┬────────┬──────────┐
+│ field_name ┆ support_prec ┆ prec     ┆ support_rec ┆ rec      ┆ weight ┆ f1       │
+│ ---        ┆ ---          ┆ ---      ┆ ---         ┆ ---      ┆ ---    ┆ ---      │
+│ str        ┆ u32          ┆ f64      ┆ u32         ┆ f64      ┆ f64    ┆ f64      │
+╞════════════╪══════════════╪══════════╪═════════════╪══════════╪════════╪══════════╡
+│ alt_title  ┆ 29           ┆ 0.214891 ┆ 27          ┆ 0.230809 ┆ 1.0    ┆ 0.222566 │
+│ creator    ┆ 46           ┆ 0.337738 ┆ 44          ┆ 0.353089 ┆ 1.0    ┆ 0.345243 │
+│ publisher  ┆ 46           ┆ 0.471997 ┆ 48          ┆ 0.452331 ┆ 1.0    ┆ 0.461955 │
+│ title      ┆ 45           ┆ 0.579438 ┆ 48          ┆ 0.543224 ┆ 1.0    ┆ 0.560747 │
+│ year       ┆ 33           ┆ 0.69697  ┆ 48          ┆ 0.479167 ┆ 1.0    ┆ 0.567901 │
+└────────────┴──────────────┴──────────┴─────────────┴──────────┴────────┴──────────┘
+```
+
+```python
+# summarise intermediate results
+aggregator.summarise_results(intermediate)
+```
+
+```text
+shape: (3, 4)
+┌────────┬───────────┬──────────┬─────────┐
+│ metric ┆ mode      ┆ value    ┆ support │
+│ ---    ┆ ---       ┆ ---      ┆ ---     │
+│ str    ┆ str       ┆ f64      ┆ f64     │
+╞════════╪═══════════╪══════════╪═════════╡
+│ f1     ┆ field-avg ┆ 0.431682 ┆ 43.8    │
+│ prec   ┆ field-avg ┆ 0.460207 ┆ 39.8    │
+│ rec    ┆ field-avg ┆ 0.411724 ┆ 43.0    │
+└────────┴───────────┴──────────┴─────────┘
+```
+
+**Note:** Passing `intermediate` here is optional, but can be used to alter
+intermediate results before summarisation.
