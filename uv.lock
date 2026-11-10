@@ -402,7 +402,7 @@ wheels = [
 
 [[package]]
 name = "bibraeval"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "bibra" },
