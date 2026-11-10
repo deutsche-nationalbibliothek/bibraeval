@@ -8,10 +8,20 @@ on:
 
 permissions:
   contents: read
+  pages: read
 
 jobs:
+  tests:
+    name: Run tests
+    uses: ./.github/workflows/tests.yml
+
+  docs:
+    name: Build documentation
+    uses: ./.github/workflows/docs.yml
+
   build:
     name: Build package
+    needs: [tests, docs]
     runs-on: ubuntu-latest
     env:
       PYTHON-VERSION: "3.14"
