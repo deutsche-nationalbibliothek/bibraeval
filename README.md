@@ -4,8 +4,8 @@
 [![License](https://img.shields.io/badge/License-EUPL%201.2-blue.svg)](https://opensource.org/license/EUPL-1.2)
 [![Tests](https://github.com/deutsche-nationalbibliothek/bibraeval/actions/workflows/tests.yml/badge.svg)](https://github.com/deutsche-nationalbibliothek/bibraeval/actions/workflows/tests.yml)
 [![docs](https://github.com/deutsche-nationalbibliothek/bibraeval/actions/workflows/docs.yml/badge.svg)](https://deutsche-nationalbibliothek.github.io/bibraeval/index.html)
-<!-- [![PyPI Latest Release](https://img.shields.io/pypi/v/bibraeval.svg)](https://pypi.org/project/bibraeval/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/bibraeval.svg?label=PyPI%20downloads)](https://pypi.org/project/bibraeval/) -->
+[![PyPI Latest Release](https://img.shields.io/pypi/v/bibraeval.svg)](https://pypi.org/project/bibraeval/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/bibraeval.svg?label=PyPI%20downloads)](https://pypi.org/project/bibraeval/)
 
 Evaluating descriptive cataloguing records created with BIBRA.
 [BIBRA](https://github.com/NatLibFi/BIBRA) is an (L)LM-based assistance
