@@ -2,7 +2,19 @@
 name = "bibraeval"
 version = "0.1.0"
 description = "Evaluating descriptive cataloguing records created with BIBRA"
+authors = [
+    {name = "Deutsche Nationalbibliothek"},
+]
+maintainers = [
+    {name = "Maximilian Kähler", email = "m.kaehler@dnb.de"},
+    {name = "Jana Rieger", email = "j.rieger@dnb.de"}
+]
+keywords = [
+    "",
+]
+license = "EUPL-1.2"
 readme = "README.md"
+
 requires-python = ">=3.12"
 dependencies = [
     "bibra>=0.1.0",
