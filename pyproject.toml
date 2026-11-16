@@ -10,7 +10,10 @@ maintainers = [
     {name = "Jana Rieger", email = "j.rieger@dnb.de"}
 ]
 keywords = [
-    "",
+    "bibliographic-metadata",
+    "cataloging",
+    "code4lib",
+    "performance-evaluation"
 ]
 license = "EUPL-1.2"
 readme = "README.md"
